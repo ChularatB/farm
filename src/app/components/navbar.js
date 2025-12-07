@@ -1,62 +1,36 @@
+// components/BottomNav.js
 "use client";
-import Link from "next/link";
-import { useState } from "react";
-import {
-  MdHome,
-  MdOutlineHistory,
-  MdPerson,
-} from "react-icons/md";
-import { VscSettingsGear, VscSettings } from "react-icons/vsc";
+import { Home, Settings, User, Sliders } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
-export default function Navbar() {
-  const [active, setActive] = useState(0);
+export default function BottomNav() {
+  const pathname = usePathname();
 
-  const tabs = [
-    { icon: <MdHome size={26} />, label: "Home", link: "/" },
-    { icon: <VscSettings size={26} />, label: "Control", link: "/Control" },
-    { icon: <MdOutlineHistory size={26} />, label: "History", link: "/History" },
-    { icon: <VscSettingsGear size={26} />, label: "Setting", link: "/Setting" },
-    { icon: <MdPerson size={26} />, label: "Profile", link: "/Profile" },
+  const navItems = [
+    { name: 'หน้าหลัก', icon: Home, path: '/' },
+    { name: 'ควบคุม', icon: Sliders, path: '/Control' }, // แยกหน้าควบคุมถ้าต้องการ หรือรวมในหน้าหลักก็ได้
+    { name: 'ตั้งค่า', icon: Settings, path: '/Setting' },
+    { name: 'โปรไฟล์', icon: User, path: '/Profile' },
   ];
 
   return (
-    <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[90%] text-white rounded-3xl px-6 py-3 shadow-xl flex items-center justify-between bg-gradient-to-r from-teal-800 to-teal-200">
-      {tabs.map((tab, index) => {
-        const content = (
-          <>
-            <span
-              className={`transition-all duration-300 text-black ${
-                active === index ? "scale-110 opacity-100 p-1.5 bg-white text-black rounded-xl" : "opacity-70"
-              }`}
-            >
-              {tab.icon}
-            </span>
-
-            {active === index && (
-              <span className="w-2 h-2 bg-white rounded-full mt-1 animate-bounce" />
+    <div className="fixed bottom-4 left-4 right-4 h-16 bg-gradient-to-r from-primary-dark to-primary-medium rounded-full shadow-2xl flex justify-around items-center z-50">
+      {navItems.map((item) => {
+        const Icon = item.icon;
+        const isActive = pathname === item.path;
+        return (
+          <Link key={item.path} href={item.path} className="relative flex flex-col items-center justify-center w-full h-full">
+            {isActive && (
+              <span className="absolute -bottom-1 w-1 h-1 bg-white rounded-full mb-2"></span>
             )}
-          </>
-        );
-
-        return tab.link ? (
-          <Link
-            href={tab.link}
-            key={index}
-            className="flex flex-col items-center gap-1 relative"
-            onClick={() => setActive(index)}
-          >
-            {content}
+            <Icon 
+              size={24} 
+              className={`transition-all duration-300 ${isActive ? 'text-white scale-110' : 'text-primary-dark/60 mix-blend-screen'}`} 
+            />
           </Link>
-        ) : (
-          <button
-            key={index}
-            onClick={() => setActive(index)}
-            className="flex flex-col items-center gap-1 relative"
-          >
-            {content}
-          </button>
         );
       })}
-    </nav>
+    </div>
   );
 }
