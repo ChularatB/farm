@@ -8,6 +8,8 @@
     "start": "next start"
   },
   "dependencies": {
+    "@google-cloud/bigquery": "^8.1.1",
+    "@google-cloud/pubsub": "^5.2.0",
     "@tailwindcss/cli": "^4.1.17",
     "clsx": "^2.1.1",
     "firebase": "^12.6.0",
