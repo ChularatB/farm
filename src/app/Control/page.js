@@ -4,12 +4,39 @@ import { useState, useEffect } from 'react';
 import { Play, Zap, Droplets, Settings, Loader2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import Link from 'next/link';
+import { useSession } from 'next-auth/react'; // <--- เพิ่ม
+import { useRouter } from 'next/navigation';   // <--- เพิ่ม
+
 
 export default function ControlPage() {
   // เริ่มต้นตั้งเป็น true ไปก่อน
   const [isAuto, setIsAuto] = useState(true);
   const [isIrrigationOn, setIsIrrigationOn] = useState(false);
   const [loading, setLoading] = useState(true);
+
+    // --- ส่วนตรวจสอบสิทธิ์ (เพิ่มใหม่) ---
+   const { status } = useSession();
+   const router = useRouter();
+
+   useEffect(() => {
+      if (status === 'unauthenticated') {
+         router.push('/login');
+      }
+   }, [status, router]);
+   // --------------------------------
+
+   // Loading State
+   if (status === 'loading') {
+      return (
+         <div className="min-h-screen flex items-center justify-center bg-background-light text-primary-dark font-mitr">
+            <Loader2 className="animate-spin mr-2" /> กำลังตรวจสอบสิทธิ์...
+         </div>
+      );
+   }
+
+   if (status === 'unauthenticated') return null;
+
+
 
   // --- 1. (เพิ่มใหม่) โหลดสถานะเดิมจาก Local Storage ตอนเปิดหน้าเว็บ ---
   useEffect(() => {
@@ -110,10 +137,10 @@ export default function ControlPage() {
         <div className="space-y-4">
 
           {/* Video Placeholder */}
-          <div className="bg-gray-200 rounded-3xl h-48 flex items-center justify-center relative shadow-inner overflow-hidden">
+          {/* <div className="bg-gray-200 rounded-3xl h-48 flex items-center justify-center relative shadow-inner overflow-hidden">
             <Play className="text-gray-400 fill-gray-400" size={48} />
             <div className="absolute bottom-4 left-4 text-xs bg-black/50 text-white px-2 py-1 rounded">Live: {new Date().toLocaleTimeString('th-TH')}</div>
-          </div>
+          </div> */}
 
           {/* Control Card */}
           <div className="bg-white rounded-3xl p-5 shadow-lg border border-secondary-light">

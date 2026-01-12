@@ -1,10 +1,21 @@
+// src/app/api/sensors/route.js
 import { NextResponse } from 'next/server';
 import bigquery from '@/lib/bigquery';
+import { getServerSession } from "next-auth"; // ตัวดึง Session ฝั่ง Server
+import { authOptions } from "@/lib/authOptions"; // ตัวตั้งค่าที่เราแยกไว้
 
 export async function GET() {
   try {
-    // 1. กำหนด Query (แก้ชื่อ dataset กับ table ให้ตรงของแกนะ)
-    // Query นี้ดึงข้อมูล 100 แถวล่าสุด เรียงตามเวลา
+    // 1. เช็คว่าใคร Login อยู่?
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user?.device_id) {
+      return NextResponse.json({ error: 'Unauthorized or No Device Linked' }, { status: 401 });
+    }
+
+    const userDeviceId = session.user.device_id; // ได้รหัสฟาร์มมาแล้ว! (เช่น farm_001)
+
+    // 2. Query โดยกรอง WHERE device_id = ...
     const query = `
       SELECT 
         temperature, 
@@ -13,17 +24,19 @@ export async function GET() {
         pump_status, 
         timestamp
       FROM \`smart-farm-c9d48.smartfarm.sensors\`
+      WHERE device_id = @deviceId
       ORDER BY timestamp DESC
       LIMIT 100
     `;
 
-    // 2. รัน Query
-    const [rows] = await bigquery.query(query);
+    const [rows] = await bigquery.query({
+      query,
+      params: { deviceId: userDeviceId } // ใส่ Parameter ป้องกัน SQL Injection
+    });
 
-    // 3. แปลงวันที่ให้เป็น Format ที่ใช้งานง่าย (Optional)
+    // 3. แปลงข้อมูลส่งกลับ
     const formattedData = rows.map(row => ({
       ...row,
-      // แปลง BigQuery Timestamp เป็น String
       timestamp: row.timestamp.value || row.timestamp, 
     }));
 

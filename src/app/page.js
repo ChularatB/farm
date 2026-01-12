@@ -1,66 +1,96 @@
-// app/page.js
+// src/app/page.js
 "use client";
 import { useState, useEffect } from 'react';
-import { CloudRain, Droplets, Sun, Thermometer, Wind } from 'lucide-react';
+import { useSession } from 'next-auth/react'; // 1. นำเข้า useSession
+import { useRouter } from 'next/navigation';   // 2. นำเข้า useRouter
+import { CloudRain, Droplets, Sun, Thermometer, Wind, Loader2 } from 'lucide-react';
 import { AreaChart, Area, XAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 export default function Dashboard() {
-  const [activeTab, setActiveTab] = useState('overview'); // overview, control, history
-  
-  // State สำหรับเก็บข้อมูลจริงจาก BigQuery
-  const [sensorData, setSensorData] = useState([]); // ข้อมูลกราฟ (Array)
-  const [latest, setLatest] = useState(null);       // ข้อมูลล่าสุด (Object)
-  const [loading, setLoading] = useState(true);     // สถานะการโหลด
+  // --- ส่วนตรวจสอบสิทธิ์ (Auth) ---
+  const { data: session, status } = useSession();
+  const router = useRouter();
 
-  // ฟังก์ชันดึงข้อมูลจาก API
+  // --- State ของหน้า Dashboard ---
+  const [activeTab, setActiveTab] = useState('overview'); // overview, history
+  const [sensorData, setSensorData] = useState([]); // ข้อมูลกราฟ
+  const [latest, setLatest] = useState(null);       // ข้อมูลล่าสุด
+  const [loadingData, setLoadingData] = useState(true); // สถานะโหลดข้อมูล (แยกกับสถานะโหลด Session)
+
+  // 1. Effect เช็ค Login: ถ้ายังไม่ล็อกอิน ให้ดีดไปหน้า Login
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+
+  // 2. ฟังก์ชันดึงข้อมูล (Fetch Data)
   const fetchData = async () => {
     try {
-      // เรียก API ที่เราสร้างไว้ (app/api/sensors/route.js)
       const res = await fetch('/api/sensors');
       const json = await res.json();
       
       if (json.data && json.data.length > 0) {
-        // API ส่งข้อมูลมาแบบ เรียงจากใหม่ไปเก่า (DESC) 
-        // แต่กราฟต้องการ เรียงจากเก่าไปใหม่ (ASC) -> เลยต้อง reverse()
+        // API ส่งมาใหม่ -> เก่า (DESC) แต่กราฟต้องการ เก่า -> ใหม่ (ASC)
         const reversedData = [...json.data].reverse();
         
         setSensorData(reversedData);
-        // ข้อมูลล่าสุดคือตัวสุดท้ายหลังจาก reverse (หรือตัวแรกก่อน reverse)
+        // ข้อมูลล่าสุดคือตัวสุดท้ายของ array ที่กลับด้านแล้ว
         setLatest(reversedData[reversedData.length - 1]);
       }
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
-      setLoading(false);
+      setLoadingData(false);
     }
   };
 
-  // ดึงข้อมูลเมื่อเข้าหน้าเว็บ และตั้งเวลาดึงใหม่ทุก 10 วินาที
+  // 3. Effect ดึงข้อมูล: ทำงานเฉพาะตอนล็อกอินผ่านแล้ว (authenticated)
   useEffect(() => {
-    fetchData();
-    const interval = setInterval(fetchData, 10000); 
-    return () => clearInterval(interval);
-  }, []);
+    if (status === 'authenticated') {
+      fetchData(); // ดึงครั้งแรก
+      const interval = setInterval(fetchData, 10000); // ดึงใหม่ทุก 10 วิ
+      return () => clearInterval(interval);
+    }
+  }, [status]);
 
-  // ฟังก์ชันจัดรูปแบบเวลาสำหรับกราฟ (เช่น "2025-12-09 16:30" -> "16:30")
+  // ฟังก์ชันจัดรูปแบบเวลา
   const formatTime = (timestamp) => {
     if (!timestamp) return "";
     const date = new Date(timestamp);
     return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
   };
 
-  if (loading) {
-    return <div className="min-h-screen flex items-center justify-center bg-background-light text-primary-dark font-bold">กำลังโหลดข้อมูลฟาร์ม...</div>;
+  // --- ส่วนการแสดงผล (Render) ---
+
+  // A. ถ้ากำลังเช็ค Session ให้หมุนติ้วๆ รอไปก่อน
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background-light text-primary-dark font-bold font-mitr">
+        <Loader2 className="animate-spin mr-2" /> กำลังตรวจสอบสิทธิ์...
+      </div>
+    );
   }
 
+  // B. ถ้ายังไม่ล็อกอิน (และกำลังจะ Redirect) ไม่ต้องโชว์อะไร
+  if (status === 'unauthenticated') {
+    return null; 
+  }
+
+  // C. ถ้าล็อกอินแล้ว โชว์หน้า Dashboard เต็มๆ
   return (
     <div className="min-h-screen bg-background-light font-mitr pb-24 px-6 pt-8">
       
       {/* Header */}
       <header className="flex justify-between items-center mb-6">
         <div>
-          <p className="text-xl text-gray-500">ยินดีต้อนรับกลับ, ชาวสวน!</p>
-          <p className="text-xs text-gray-400">อัปเดตล่าสุด: {latest ? formatTime(latest.timestamp) : '-'}</p>
+          {/* แสดงชื่อ User จาก Session */}
+          <p className="text-xl text-gray-500">
+            ยินดีต้อนรับ, <span className="text-primary-dark font-bold">{session?.user?.name || 'ชาวสวน'}</span>!
+          </p>
+          <p className="text-xs text-gray-400">
+            อัปเดตล่าสุด: {latest ? formatTime(latest.timestamp) : (loadingData ? 'กำลังโหลด...' : '-')}
+          </p>
         </div>
         <div className="flex gap-2">
            <div className="bg-white p-2 rounded-full shadow-sm text-primary-medium"><CloudRain size={20}/></div>
@@ -79,7 +109,7 @@ export default function Dashboard() {
               : 'text-gray-400 hover:text-primary-dark'
             }`}
           >
-            {tab === 'overview' ? 'ภาพรวม' : tab === 'history' ? 'ประวัติ' : 'ควบคุม'}
+            {tab === 'overview' ? 'ภาพรวม' : 'ประวัติ'}
           </button>
         ))}
       </div>
@@ -92,13 +122,16 @@ export default function Dashboard() {
           <div className="bg-white rounded-[30px] p-6 shadow-md text-center relative overflow-hidden">
              <div className={`absolute top-0 left-0 w-full h-2 ${latest?.soil_moisture < 40 ? 'bg-red-500' : 'bg-primary-medium'}`}></div>
              <h2 className="text-gray-500 mb-4">สถานะระบบโดยรวม</h2>
+             {/* Logic เช็คสถานะคร่าวๆ */}
              <div className={`text-5xl font-bold mb-2 ${latest?.soil_moisture < 40 ? 'text-red-500' : 'text-green-500'}`}>
-               {latest?.soil_moisture < 40 ? 'Warning' : 'Normal'}
+               {loadingData ? '...' : (latest?.soil_moisture < 40 ? 'Warning' : 'Normal')}
              </div>
              <p className="text-xs text-gray-400 px-4">
-               {latest?.soil_moisture < 40 
-                 ? 'ความชื้นในดินต่ำกว่ากำหนด ระบบรดน้ำกำลังทำงาน' 
-                 : 'ระบบทำงานปกติ ค่าความชื้นและอุณหภูมิอยู่ในเกณฑ์ที่กำหนด'}
+               {loadingData 
+                 ? 'กำลังเชื่อมต่อกับเซ็นเซอร์...' 
+                 : (latest?.soil_moisture < 40 
+                     ? 'ความชื้นในดินต่ำกว่ากำหนด ระบบรดน้ำกำลังทำงาน' 
+                     : 'ระบบทำงานปกติ ค่าความชื้นและอุณหภูมิอยู่ในเกณฑ์ที่กำหนด')}
              </p>
           </div>
 
@@ -145,7 +178,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <span className={`text-xs px-2 py-1 rounded-lg ${latest?.soil_moisture < 2000 ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
-                {/* Logic สถานะดินขึ้นอยู่กับค่า Analog ที่ได้ (เช่น 0-4095) ต้องปรับตาม Sensor จริง */}
+                {/* หมายเหตุ: Logic 2000 เป็นแค่ตัวอย่าง ต้องปรับตาม Sensor จริง */}
                 {latest?.soil_moisture < 2000 ? 'ต่ำ' : 'ดี'}
               </span>
             </div>
@@ -161,7 +194,7 @@ export default function Dashboard() {
               <span>Realtime (100 ล่าสุด)</span>
            </div>
 
-           {/* Chart 1: Soil Moisture & Humidity */}
+           {/* Chart 1: Soil Moisture */}
            <div className="bg-white p-4 rounded-3xl shadow-sm">
               <h3 className="text-sm text-gray-500 mb-4 ml-2">ความชื้นในดิน (ล่าสุด)</h3>
               <div className="h-64 w-full">
@@ -174,14 +207,13 @@ export default function Dashboard() {
                       tick={{fontSize: 10}} 
                       axisLine={false} 
                       tickLine={false} 
-                      interval={10} // แสดงเวลาทุกๆ 10 จุดเพื่อไม่ให้รก
+                      interval={10} 
                     />
                     <Tooltip 
                       labelFormatter={formatTime}
                       cursor={{fill: '#F0F7F0'}} 
                       contentStyle={{borderRadius: '10px', border: 'none'}} 
                     />
-                    {/* เปลี่ยน dataKey ให้ตรงกับชื่อ column ใน BigQuery */}
                     <Bar dataKey="soil_moisture" fill="#68B2A0" radius={[4, 4, 4, 4]} name="ความชื้นดิน" />
                   </BarChart>
                 </ResponsiveContainer>

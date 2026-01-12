@@ -1,10 +1,12 @@
-// app/settings/page.js
+// src/app/Setting/page.js
 "use client";
-import { useState } from 'react';
-import { Droplets, Lightbulb, Sprout, MapPin, Bell } from 'lucide-react';
-import { clsx } from 'clsx'; // สำหรับรวม Class
+import { useState, useEffect } from 'react';
+import { Droplets, Lightbulb, Sprout, MapPin, Bell, Loader2 } from 'lucide-react'; // เพิ่ม Loader2
+import { clsx } from 'clsx';
+import { useSession } from 'next-auth/react'; // <--- เพิ่ม
+import { useRouter } from 'next/navigation';   // <--- เพิ่ม
 
-// Component สำหรับ Toggle Switch
+// Component สำหรับ Toggle Switch (เหมือนเดิม)
 const ToggleSwitch = ({ label, isEnabled, onToggle, Icon, colorClass }) => (
   <div className="p-4 border-b border-gray-100 flex items-center justify-between last:border-b-0">
     <div className="flex items-center gap-3">
@@ -27,11 +29,33 @@ const ToggleSwitch = ({ label, isEnabled, onToggle, Icon, colorClass }) => (
 );
 
 export default function SettingsPage() {
+  // --- ส่วนตรวจสอบสิทธิ์ (เพิ่มใหม่) ---
+  const { status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+  // --------------------------------
+
   const [useIrrigation, setUseIrrigation] = useState(true);
   const [useLight, setUseLight] = useState(false);
   const [useFertilizer, setUseFertilizer] = useState(false);
-  const [farmSize, setFarmSize] = useState('100'); // ขนาดพื้นที่
+  const [farmSize, setFarmSize] = useState('100');
   const [receiveLine, setReceiveLine] = useState(true);
+
+  // Loading State
+  if (status === 'loading') {
+    return (
+       <div className="min-h-screen flex items-center justify-center bg-background-light text-primary-dark font-mitr">
+          <Loader2 className="animate-spin mr-2" /> กำลังตรวจสอบสิทธิ์...
+       </div>
+    );
+  }
+
+  if (status === 'unauthenticated') return null;
 
   return (
     <div className="min-h-screen bg-background-light font-mitr pb-24 px-6 pt-8">
