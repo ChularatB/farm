@@ -82,14 +82,14 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">เบอร์โทรศัพท์ (Login ID)</label>
+            <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">Email</label>
             <input
               name="email"
               type="text"
               required
               onChange={handleChange}
               className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50"
-              placeholder="08X-XXX-XXXX"
+              placeholder="xxxxx@email.com"
             />
           </div>
 

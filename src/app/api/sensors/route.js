@@ -10,12 +10,11 @@ export async function GET() {
     const session = await getServerSession(authOptions);
 
     if (!session || !session.user?.device_id) {
-      return NextResponse.json({ error: 'Unauthorized or No Device Linked' }, { status: 401 });
+      return NextResponse.json({ error: 'Unauthorized or No Devic5e Linked' }, { status: 401 });
     }
 
     const userDeviceId = session.user.device_id; // ได้รหัสฟาร์มมาแล้ว! (เช่น farm_001)
 
-    // 2. Query โดยกรอง WHERE device_id = ...
     const query = `
       SELECT 
         temperature, 

@@ -3,20 +3,21 @@
 import { useState, useEffect } from 'react';
 import { MapPin, User, LogOut, ChevronRight, Loader2 } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
-import { useRouter } from 'next/navigation'; 
+import { useRouter } from 'next/navigation';   // <--- เพิ่ม
+
 
 export default function Profile() {
    const { data: session } = useSession();
-   // --- ส่วนตรวจสอบสิทธิ์ (เพิ่มใหม่) ---
-   const { status } = useSession();
-   const router = useRouter();
+  // --- ส่วนตรวจสอบสิทธิ์ (เพิ่มใหม่) ---
+  const { status } = useSession();
+  const router = useRouter();
 
-   useEffect(() => {
-      if (status === 'unauthenticated') {
-         router.push('/login');
-      }
-   }, [status, router]);
-   // --------------------------------
+  useEffect(() => {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    }
+  }, [status, router]);
+  // --------------------------------
 
    // Loading State
    if (status === 'loading') {
@@ -43,10 +44,15 @@ export default function Profile() {
             <p className="text-gray-500 text-sm">
                {session?.user?.email || "user@farmbrain.com"}
             </p>
+            <div className="bg-white px-4 py-1 rounded-full shadow-sm border border-gray-200">
+                <p className="text-xs text-gray-400">
+                    รหัสฟาร์ม (Device ID): <span className="text-primary-dark font-bold">{session?.user?.device_id || '-'}</span>
+                </p>
+            </div>
          </div>
 
          {/* Farm Info Cards */}
-         <div className="grid grid-cols-2 gap-4 mb-6">
+         {/* <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-white p-4 rounded-3xl shadow-sm text-center">
                <h3 className="text-gray-400 text-xs mb-1">พื้นที่ฟาร์ม</h3>
                <p className="text-xl font-bold text-primary-dark">2 ไร่</p>
@@ -55,7 +61,7 @@ export default function Profile() {
                <h3 className="text-gray-400 text-xs mb-1">อุปกรณ์</h3>
                <p className="text-xl font-bold text-primary-dark">12 ตัว</p>
             </div>
-         </div>
+         </div> */}
 
          {/* Menu List */}
          <div className="bg-white rounded-3xl shadow-sm overflow-hidden mb-6">

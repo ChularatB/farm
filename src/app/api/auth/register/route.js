@@ -5,38 +5,41 @@ import { hash } from 'bcrypt';
 
 export async function POST(request) {
   try {
-    const { name, email, password } = await request.json();
+    const { name, phone, password } = await request.json();
 
-    if (!email || !password || !name) {
-      return NextResponse.json({ error: 'กรุณากรอกข้อมูลให้ครบ' }, { status: 400 });
+    // 1. ตรวจสอบค่าที่ส่งมา
+    if (!phone || !password || !name) {
+      return NextResponse.json({ error: 'กรอกข้อมูลไม่ครบจ่ะแก' }, { status: 400 });
     }
 
-    // 1. เช็คว่ามีอีเมลนี้หรือยัง
-    const checkQuery = `SELECT email FROM \`smart-farm-c9d48.smartfarm.users\` WHERE email = @email`;
-    const [existing] = await bigquery.query({ query: checkQuery, params: { email } });
+    // 2. ✨ ส่วนสำคัญ: สร้าง device_id อัตโนมัติ ✨
+    // สุ่มเลข 4 หลักมาต่อท้ายคำว่า farm_
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const newDeviceId = `farm_${randomNum}`;
 
-    if (existing.length > 0) {
-      return NextResponse.json({ error: 'อีเมลนี้ถูกใช้งานแล้ว' }, { status: 400 });
-    }
-
-    // 2. เข้ารหัสรหัสผ่าน
+    // 3. เข้ารหัสรหัสผ่าน
     const hashedPassword = await hash(password, 10);
 
-    // 3. บันทึก
+    // 4. บันทึกลง BigQuery
     const insertQuery = `
-      INSERT INTO \`smart-farm-c9d48.smartfarm.users\` (name, email, password, created_at)
-      VALUES (@name, @email, @password, CURRENT_TIMESTAMP())
+      INSERT INTO \`smart-farm-c9d48.smartfarm.users\` (name, email, phone, password, device_id, created_at)
+      VALUES (@name, @phone, @phone, @password, @deviceId, CURRENT_TIMESTAMP())
     `;
 
     await bigquery.query({
       query: insertQuery,
-      params: { name, email, password: hashedPassword },
+      params: { 
+        name, 
+        phone, 
+        password: hashedPassword,
+        deviceId: newDeviceId // ยัดรหัสฟาร์มที่เราสุ่มได้ลงไป
+      },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, deviceId: newDeviceId });
 
   } catch (error) {
     console.error('Register Error:', error);
-    return NextResponse.json({ error: 'สมัครสมาชิกไม่สำเร็จ' }, { status: 500 });
+    return NextResponse.json({ error: 'สมัครไม่สำเร็จว่ะแก' }, { status: 500 });
   }
 }

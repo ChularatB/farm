@@ -79,7 +79,7 @@ export default function Dashboard() {
 
   // C. ถ้าล็อกอินแล้ว โชว์หน้า Dashboard เต็มๆ
   return (
-    <div className="min-h-screen bg-background-light font-mitr pb-24 px-6 pt-8">
+    <div className="max-h-screen bg-background-light font-mitr pb-24 px-6 pt-8">
       
       {/* Header */}
       <header className="flex justify-between items-center mb-6">
