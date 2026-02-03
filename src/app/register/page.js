@@ -1,12 +1,12 @@
-// app/register/page.js
+// src/app/register/page.js
 "use client";
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Sprout, Loader2, UserPlus } from 'lucide-react';
+import { Sprout, Loader2, UserPlus, Mail, Phone } from 'lucide-react';
 
 export default function RegisterPage() {
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', confirmPassword: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -20,7 +20,6 @@ export default function RegisterPage() {
     setError('');
     setLoading(true);
 
-    // เช็คพื้นฐาน
     if (formData.password !== formData.confirmPassword) {
       setError('รหัสผ่านไม่ตรงกัน');
       setLoading(false);
@@ -33,7 +32,8 @@ export default function RegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
-          email: formData.email,
+          email: formData.email, // ส่ง email
+          phone: formData.phone, // ส่ง phone
           password: formData.password
         }),
       });
@@ -44,8 +44,7 @@ export default function RegisterPage() {
         setError(json.error || 'เกิดข้อผิดพลาด');
         setLoading(false);
       } else {
-        // สมัครเสร็จ ให้ไปหน้า Login
-        alert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
+        alert('สมัครสมาชิกสำเร็จ! รหัสฟาร์มของคุณคือ: ' + json.deviceId);
         router.push('/login');
       }
     } catch (err) {
@@ -58,77 +57,62 @@ export default function RegisterPage() {
     <div className="min-h-screen bg-background-light flex items-center justify-center px-4 font-mitr py-10">
       <div className="bg-white p-8 rounded-[40px] shadow-xl w-full max-w-md border border-secondary-light">
         
-        {/* Header */}
         <div className="text-center mb-6">
           <div className="bg-secondary-light w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
             <UserPlus size={32} className="text-primary-dark" />
           </div>
-          <h1 className="text-2xl font-bold text-primary-dark">สมัครสมาชิกใหม่</h1>
-          <p className="text-gray-400 text-xs">เข้าร่วม FarmBrain เพื่อจัดการฟาร์มของคุณ</p>
+          <h1 className="text-2xl font-bold text-primary-dark">สมัครสมาชิก</h1>
+          <p className="text-gray-400 text-xs">กรอกข้อมูลให้ครบถ้วนเพื่อเริ่มใช้งาน</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
+          {/* ชื่อฟาร์ม */}
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">ชื่อฟาร์ม / ชื่อผู้ใช้</label>
-            <input
-              name="name"
-              type="text"
-              required
-              onChange={handleChange}
+            <input name="name" type="text" required onChange={handleChange}
               className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50"
-              placeholder="เช่น สมชาย ฟาร์ม"
-            />
+              placeholder="เช่น สมชาย ฟาร์ม" />
           </div>
 
+          {/* Email */}
           <div>
-            <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">Email</label>
-            <input
-              name="email"
-              type="text"
-              required
-              onChange={handleChange}
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50"
-              placeholder="xxxxx@email.com"
-            />
+            <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">อีเมล (Email)</label>
+            <div className="relative">
+                <Mail className="absolute left-3 top-3 text-gray-400" size={18}/>
+                <input name="email" type="email" required onChange={handleChange}
+                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50"
+                placeholder="example@email.com" />
+            </div>
           </div>
 
+          {/* เบอร์โทร */}
+          <div>
+            <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">เบอร์โทรศัพท์ (Phone)</label>
+             <div className="relative">
+                <Phone className="absolute left-3 top-3 text-gray-400" size={18}/>
+                <input name="phone" type="tel" required pattern="[0-9]{10}" onChange={handleChange}
+                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50"
+                placeholder="08XXXXXXXX" />
+            </div>
+          </div>
+
+          {/* รหัสผ่าน */}
           <div className="grid grid-cols-2 gap-3">
             <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">รหัสผ่าน</label>
-                <input
-                name="password"
-                type="password"
-                required
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50"
-                placeholder="******"
-                />
+                <input name="password" type="password" required onChange={handleChange}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50" placeholder="******" />
             </div>
             <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">ยืนยันรหัส</label>
-                <input
-                name="confirmPassword"
-                type="password"
-                required
-                onChange={handleChange}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50"
-                placeholder="******"
-                />
+                <input name="confirmPassword" type="password" required onChange={handleChange}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50" placeholder="******" />
             </div>
           </div>
 
-          {error && (
-            <div className="bg-red-50 text-red-500 text-xs p-3 rounded-xl text-center font-bold">
-              ⚠️ {error}
-            </div>
-          )}
+          {error && <div className="bg-red-50 text-red-500 text-xs p-3 rounded-xl text-center font-bold">⚠️ {error}</div>}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-primary-medium hover:bg-primary-dark text-white font-bold py-3 rounded-3xl shadow-lg transition-all flex justify-center items-center gap-2 mt-4"
-          >
+          <button type="submit" disabled={loading} className="w-full bg-primary-medium hover:bg-primary-dark text-white font-bold py-3 rounded-3xl shadow-lg transition-all flex justify-center items-center gap-2 mt-4">
             {loading ? <Loader2 className="animate-spin" /> : 'ลงทะเบียน'}
           </button>
         </form>

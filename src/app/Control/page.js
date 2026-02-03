@@ -1,65 +1,64 @@
 // app/control/page.js
 "use client";
 import { useState, useEffect } from 'react';
-import { Play, Zap, Droplets, Settings, Loader2 } from 'lucide-react';
+import { Play, Zap, Droplets, Settings, Loader2, Image as ImageIcon } from 'lucide-react';
 import { clsx } from 'clsx';
 import Link from 'next/link';
 import { useSession } from 'next-auth/react'; // <--- เพิ่ม
 import { useRouter } from 'next/navigation';   // <--- เพิ่ม
 
-
 export default function ControlPage() {
-  // เริ่มต้นตั้งเป็น true ไปก่อน
+// ✅ 1. ย้าย Hook ทั้งหมดมาไว้บนสุด
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
   const [isAuto, setIsAuto] = useState(true);
   const [isIrrigationOn, setIsIrrigationOn] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [farmImage, setFarmImage] = useState(null);
+  const [imgLoading, setImgLoading] = useState(true);
 
-    // --- ส่วนตรวจสอบสิทธิ์ (เพิ่มใหม่) ---
-   const { status } = useSession();
-   const router = useRouter();
-
-   useEffect(() => {
-      if (status === 'unauthenticated') {
-         router.push('/login');
-      }
-   }, [status, router]);
-   // --------------------------------
-
-   // Loading State
-   if (status === 'loading') {
-      return (
-         <div className="min-h-screen flex items-center justify-center bg-background-light text-primary-dark font-mitr">
-            <Loader2 className="animate-spin mr-2" /> กำลังตรวจสอบสิทธิ์...
-         </div>
-      );
-   }
-
-   if (status === 'unauthenticated') return null;
-
-
-
-  // --- 1. (เพิ่มใหม่) โหลดสถานะเดิมจาก Local Storage ตอนเปิดหน้าเว็บ ---
+  // ✅ 2. useEffect ทั้งหมดต้องอยู่ก่อนการ return
+  
+  // ตรวจสอบสิทธิ์
   useEffect(() => {
-    // เช็คว่ามีค่าที่บันทึกไว้มั้ย?
-    const savedMode = localStorage.getItem('farm_control_mode');
-
-    if (savedMode === 'manual') {
-      setIsAuto(false); // ถ้าเคยเซฟว่า manual ก็ปรับเป็น manual
-    } else {
-      setIsAuto(true);  // ถ้าไม่มี หรือเป็น auto ก็เป็น auto
+    if (status === 'unauthenticated') {
+      router.push('/login');
     }
+  }, [status, router]);
+
+  // โหลดโหมดจาก Local Storage
+  useEffect(() => {
+    const savedMode = localStorage.getItem('farm_control_mode');
+    setIsAuto(savedMode !== 'manual');
   }, []);
 
-  // --- 2. ฟังก์ชันดึงสถานะจาก API (Logic เดิม) ---
+  // ดึงรูปล่าสุด
+  const fetchLatestImage = async () => {
+    try {
+      const res = await fetch('/api/farm-image');
+      const json = await res.json();
+      if (json.imageUrl) setFarmImage(json.imageUrl);
+    } catch (err) {
+      console.error("Failed to fetch image:", err);
+    } finally {
+      setImgLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchLatestImage();
+    const interval = setInterval(fetchLatestImage, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ดึงสถานะเซนเซอร์
   const fetchStatus = async () => {
     try {
       const res = await fetch('/api/sensors');
       const json = await res.json();
-
       if (json.data && json.data.length > 0) {
-        const latest = json.data[0];
-        const isPumpOn = latest.pump_status === 0;
-        setIsIrrigationOn(isPumpOn);
+        setIsIrrigationOn(json.data[0].pump_status === 0);
       }
     } catch (error) {
       console.error("Error fetching status:", error);
@@ -68,67 +67,49 @@ export default function ControlPage() {
     }
   };
 
-  // --- 3. ดึงข้อมูล / หยุดดึงตามโหมด (Logic เดิมที่แก้ให้แล้ว) ---
   useEffect(() => {
-    if (!isAuto) return; // ถ้า Manual ไม่ต้องดึง
-
+    if (!isAuto) return;
     fetchStatus();
     const interval = setInterval(fetchStatus, 5000);
     return () => clearInterval(interval);
   }, [isAuto]);
 
-  // --- 4. (แก้ไข) ฟังก์ชันสลับโหมด พร้อมบันทึกลงเครื่อง ---
+  // --- ฟังก์ชันช่วยเหลือ ---
   const toggleMode = () => {
     const newMode = !isAuto;
     setIsAuto(newMode);
-
-    // บันทึกค่าลง Local Storage ทันที
-    // ถ้า newMode เป็น true (Auto) ให้เซฟคำว่า 'auto'
-    // ถ้า newMode เป็น false (Manual) ให้เซฟคำว่า 'manual'
     localStorage.setItem('farm_control_mode', newMode ? 'auto' : 'manual');
   };
 
-  // const toggleIrrigation = async () => {
-  //   if (isAuto) return;
-  //   const newState = !isIrrigationOn;
-  //   setIsIrrigationOn(newState);
-  //   console.log(`สั่งงานปั๊ม: ${newState ? 'เปิด (ส่ง 0)' : 'ปิด (ส่ง 1)'}`);
-  // };
-
-  // ฟังก์ชันกดปุ่มเปิด/ปิด (Manual Control)
   const toggleIrrigation = async () => {
     if (isAuto) return;
-
     const newState = !isIrrigationOn;
-
-    // 1. กำหนดค่า Command ที่จะส่ง: 0 = เปิด, 1 = ปิด
     const commandToSend = newState ? 0 : 1;
-
-    // 2. ยิง API POST เพื่อส่งคำสั่ง
     try {
-      setLoading(true); // แสดงสถานะกำลังส่งคำสั่ง
+      setLoading(true);
       const res = await fetch('/api/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ command: commandToSend }),
       });
-
-      if (res.ok) {
-        // ถ้าส่งสำเร็จ ให้เปลี่ยนสถานะใน UI ทันที
-        setIsIrrigationOn(newState);
-        console.log(`Command ${commandToSend} sent successfully.`);
-      } else {
-        // ถ้าส่งไม่สำเร็จ
-        alert('Error: ไม่สามารถส่งคำสั่งไปยัง Cloud ได้');
-        console.error('API failed to send command');
-      }
-
+      if (res.ok) setIsIrrigationOn(newState);
     } catch (error) {
-      alert('Error: การเชื่อมต่อ Cloud ล้มเหลว');
+      alert('Error: การเชื่อมต่อล้มเหลว');
     } finally {
       setLoading(false);
     }
   };
+
+  // ✅ 3. เช็ค Loading และ Unauthenticated ไว้ "หลัง" Hook ทั้งหมด
+  if (status === 'loading') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background-light text-primary-dark font-mitr">
+        <Loader2 className="animate-spin mr-2" /> กำลังตรวจสอบสิทธิ์...
+      </div>
+    );
+  }
+
+  if (status === 'unauthenticated') return null;
 
   return (
     <div className="min-h-screen bg-background-light font-mitr pb-24 px-6 pt-8">
@@ -136,11 +117,37 @@ export default function ControlPage() {
       <section className="mt-6">
         <div className="space-y-4">
 
-          {/* Video Placeholder */}
-          {/* <div className="bg-gray-200 rounded-3xl h-48 flex items-center justify-center relative shadow-inner overflow-hidden">
-            <Play className="text-gray-400 fill-gray-400" size={48} />
-            <div className="absolute bottom-4 left-4 text-xs bg-black/50 text-white px-2 py-1 rounded">Live: {new Date().toLocaleTimeString('th-TH')}</div>
-          </div> */}
+
+          {/* 📸 ส่วนแสดงรูปล่าสุดจากฟาร์ม */}
+          <div className="bg-white rounded-[40px] p-2 shadow-lg border border-secondary-light relative overflow-hidden aspect-video">
+            {imgLoading ? (
+              <div className="w-full h-full flex items-center justify-center bg-gray-100 rounded-[32px]">
+                <Loader2 className="animate-spin text-primary-medium" />
+              </div>
+            ) : farmImage ? (
+              <img
+                src={farmImage}
+                alt="Latest Farm Status"
+                className="w-full h-full object-cover rounded-[32px]"
+              />
+              // <img
+              //   src="/farm_test.jpg"
+              //   alt="Latest Farm Status"
+              //   className="w-full h-full object-cover rounded-[32px]"
+              // />
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 rounded-[32px] text-gray-400">
+                <ImageIcon size={48} className="mb-2 opacity-20" />
+                <p className="text-xs">ยังไม่มีรูปภาพจากฟาร์ม</p>
+              </div>
+            )}
+
+            <div className="absolute top-5 left-5 bg-black/50 backdrop-blur-sm text-white text-[10px] px-3 py-1 rounded-full flex items-center gap-2">
+              <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" />
+              LATEST UPDATE
+            </div>
+          </div>
+
 
           {/* Control Card */}
           <div className="bg-white rounded-3xl p-5 shadow-lg border border-secondary-light">
@@ -206,7 +213,7 @@ export default function ControlPage() {
             </div>
           </div>
 
-          <Link href="/settings">
+          <Link href="/Setting">
             <div className="bg-white rounded-3xl p-5 shadow-lg border border-secondary-light flex justify-between items-center mt-6 cursor-pointer hover:bg-gray-50 transition-colors">
               <span className="font-semibold text-primary-dark">ตั้งค่าการใช้งานระบบ</span>
               <Settings size={24} className="text-primary-medium" />

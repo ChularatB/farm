@@ -57,7 +57,7 @@ export const authOptions = {
         session.user.id = token.sub; 
         session.user.name = token.name;
         session.user.email = token.email;
-        session.user.device_id = token.device_id; // ยัด device_id ใส่ Session
+        session.user.device_id = token.device_id;
       }
       return session;
     },
@@ -65,7 +65,7 @@ export const authOptions = {
         if (user) {
             token.name = user.name;
             token.email = user.email;
-            token.device_id = user.device_id; // รับจาก authorize
+            token.device_id = user.device_id; 
         }
         return token;
     }

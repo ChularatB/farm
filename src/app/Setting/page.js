@@ -109,7 +109,7 @@ export default function SettingsPage() {
       </div>
       
        {/* Group: Notification Config */}
-       <div className="mb-6">
+       {/* <div className="mb-6">
         <h2 className="text-sm text-gray-500 mb-2 ml-2">การตั้งค่าแจ้งเตือน</h2>
         <div className="bg-white rounded-3xl overflow-hidden shadow-lg">
           <ToggleSwitch 
@@ -125,7 +125,7 @@ export default function SettingsPage() {
                </button>
            </div>
         </div>
-      </div>
+      </div> */}
 
       <button className="w-full py-4 bg-primary-dark text-white font-bold rounded-3xl shadow-lg mt-4">
         บันทึกการตั้งค่า
