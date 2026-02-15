@@ -7,7 +7,7 @@ const StatusBadge = ({ label, isActive }) => {
     // กำหนดสีตามสถานะ ON/OFF
     const colorClass = isActive 
         ? 'bg-primary-medium text-white' // สีเขียวเมื่อ ON
-        : 'bg-secondary-light text-primary-dark border border-primary-dark/30'; // สีอ่อนเมื่อ OFF (หรือ Standby)
+        : 'bg-secondary-light text-primary-dark border border-primary-dark/30';
 
     return (
         <div className={`flex items-center justify-between p-3 rounded-lg shadow-sm ${colorClass}`}>

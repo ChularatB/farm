@@ -178,8 +178,7 @@ export default function Dashboard() {
                 </div>
               </div>
               <span className={`text-xs px-2 py-1 rounded-lg ${latest?.soil_moisture < 2000 ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
-                {/* หมายเหตุ: Logic 2000 เป็นแค่ตัวอย่าง ต้องปรับตาม Sensor จริง */}
-                {latest?.soil_moisture < 2000 ? 'ต่ำ' : 'ดี'}
+                {latest?.soil_moisture > 2000 ? 'แห้งมากอห' : 'เริ่ดเลยล่ะ'}
               </span>
             </div>
           </div>

@@ -1,7 +1,7 @@
 // src/app/Profile/page.js
 "use client";
 import { useState, useEffect } from 'react';
-import { MapPin, User, LogOut, ChevronRight, Loader2, Save, Edit3 } from 'lucide-react';
+import { User, LogOut, ChevronRight, Loader2, Save, Edit3 } from 'lucide-react';
 import { signOut, useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -14,12 +14,37 @@ export default function Profile() {
    const [isEditing, setIsEditing] = useState(false);
    const [farmInfo, setFarmInfo] = useState({ size: '0', devices: '0' });
    const [saving, setSaving] = useState(false);
+   const [loadingInfo, setLoadingInfo] = useState(true);
 
    useEffect(() => {
       if (status === 'unauthenticated') {
          router.push('/login');
       }
    }, [status, router]);
+
+   useEffect(() => {
+      if (session?.user?.device_id) {
+         const fetchFarmInfo = async () => {
+            try {
+               const res = await fetch('/api/farm/info');
+               const data = await res.json();
+
+               if (data.success) {
+                  setFarmInfo({
+                     size: data.farm_size || '0',
+                     devices: data.total_devices || '0'
+                  });
+               }
+            } catch (error) {
+               console.error("Failed to fetch farm info", error);
+            } finally {
+               setLoadingInfo(false);
+            }
+         };
+         fetchFarmInfo();
+      }
+   }, [session]);
+
 
    // Loading State
    if (status === 'loading') {
@@ -32,19 +57,18 @@ export default function Profile() {
 
    if (status === 'unauthenticated') return null;
 
-   // ฟังก์ชันบันทึกข้อมูลลง DB
    const handleSaveFarmInfo = async () => {
       setSaving(true);
       try {
          const res = await fetch('/api/farm/update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-               farm_size: farmInfo.size, 
-               total_devices: farmInfo.devices 
+            body: JSON.stringify({
+               farm_size: farmInfo.size,
+               total_devices: farmInfo.devices
             })
          });
-         
+
          if (res.ok) {
             alert("บันทึกข้อมูลเรียบร้อย!");
             setIsEditing(false);
@@ -65,44 +89,46 @@ export default function Profile() {
             <div className="w-24 h-24 bg-primary-medium rounded-full mb-4 border-4 border-white shadow-md flex items-center justify-center">
                <User size={40} className="text-white" />
             </div>
-            
+
             <h1 className="text-2xl font-bold text-primary-dark">
                {session?.user?.name || "เกษตรกร"}
             </h1>
-            
+
             {/* แสดงเบอร์โทร */}
             <p className="text-gray-500 text-sm mb-2">
-               {session?.user?.email} 
+               {session?.user?.email}
             </p>
 
             {/* ✅ แสดง Device ID (รหัสฟาร์ม) */}
             <div className="bg-white px-4 py-2 rounded-xl shadow-sm border border-secondary-light mt-2 text-center">
-                <p className="text-xs text-gray-400 uppercase tracking-wider">Farm Device ID</p>
-                <p className="text-lg font-bold text-primary-dark font-mono">
-                    {session?.user?.device_id || 'กำลังสร้าง...'}
-                </p>
+               <p className="text-xs text-gray-400 uppercase tracking-wider">Farm Device ID</p>
+               <p className="text-lg font-bold text-primary-dark font-mono">
+                  {session?.user?.device_id || 'กำลังสร้าง...'}
+               </p>
             </div>
          </div>
 
          {/* Farm Info Cards (แก้ไขได้) */}
          <div className="flex justify-between items-center mb-2 px-2">
             <h3 className="text-sm font-bold text-gray-500">ข้อมูลฟาร์ม</h3>
-            <button 
+            <button
                onClick={() => isEditing ? handleSaveFarmInfo() : setIsEditing(true)}
                className="text-xs flex items-center gap-1 text-primary-dark font-bold bg-white px-3 py-1 rounded-full shadow-sm"
             >
-               {isEditing ? (saving ? 'กำลังบันทึก...' : <><Save size={14}/> บันทึก</>) : <><Edit3 size={14}/> แก้ไข</>}
+               {isEditing ? (saving ? 'กำลังบันทึก...' : <><Save size={14} /> บันทึก</>) : <><Edit3 size={14} /> แก้ไข</>}
             </button>
          </div>
 
          <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="bg-white p-4 rounded-3xl shadow-sm text-center relative">
                <h3 className="text-gray-400 text-xs mb-1">พื้นที่ฟาร์ม (ไร่)</h3>
-               {isEditing ? (
-                  <input 
-                     type="number" 
+               {loadingInfo ? (
+                  <Loader2 className="animate-spin mx-auto text-primary-medium" size={20} />
+               ) : isEditing ? (
+                  <input
+                     type="number"
                      value={farmInfo.size}
-                     onChange={(e) => setFarmInfo({...farmInfo, size: e.target.value})}
+                     onChange={(e) => setFarmInfo({ ...farmInfo, size: e.target.value })}
                      className="w-full text-center border-b border-primary-medium focus:outline-none text-xl font-bold text-primary-dark"
                   />
                ) : (
@@ -111,11 +137,13 @@ export default function Profile() {
             </div>
             <div className="bg-white p-4 rounded-3xl shadow-sm text-center">
                <h3 className="text-gray-400 text-xs mb-1">อุปกรณ์ (ชิ้น)</h3>
-               {isEditing ? (
-                  <input 
-                     type="number" 
+               {loadingInfo ? (
+                  <Loader2 className="animate-spin mx-auto text-primary-medium" size={20} />
+               ) : isEditing ? (
+                  <input
+                     type="number"
                      value={farmInfo.devices}
-                     onChange={(e) => setFarmInfo({...farmInfo, devices: e.target.value})}
+                     onChange={(e) => setFarmInfo({ ...farmInfo, devices: e.target.value })}
                      className="w-full text-center border-b border-primary-medium focus:outline-none text-xl font-bold text-primary-dark"
                   />
                ) : (

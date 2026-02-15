@@ -1,134 +1,166 @@
-// src/app/Setting/page.js
 "use client";
 import { useState, useEffect } from 'react';
-import { Droplets, Lightbulb, Sprout, MapPin, Bell, Loader2 } from 'lucide-react'; // เพิ่ม Loader2
+import { Droplets, Lightbulb, Sprout, MapPin, Loader2, Save, Clock, Calendar, Cpu } from 'lucide-react'; // เพิ่ม Icon
 import { clsx } from 'clsx';
-import { useSession } from 'next-auth/react'; // <--- เพิ่ม
-import { useRouter } from 'next/navigation';   // <--- เพิ่ม
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 
-// Component สำหรับ Toggle Switch (เหมือนเดิม)
+// ToggleSwitch (เหมือนเดิม)
 const ToggleSwitch = ({ label, isEnabled, onToggle, Icon, colorClass }) => (
   <div className="p-4 border-b border-gray-100 flex items-center justify-between last:border-b-0">
     <div className="flex items-center gap-3">
       <div className={`${colorClass} p-2 rounded-full`}><Icon size={18} /></div>
       <span>{label}</span>
     </div>
-    <div 
-      onClick={onToggle}
-      className={clsx(
-        "w-10 h-5 rounded-full relative cursor-pointer transition-all duration-300",
-        isEnabled ? 'bg-primary-medium' : 'bg-gray-300'
-      )}
-    >
-      <div className={clsx(
-        "absolute top-1 w-3 h-3 bg-white rounded-full shadow-md transition-transform duration-300",
-        isEnabled ? 'translate-x-6' : 'translate-x-1'
-      )}></div>
+    <div onClick={onToggle} className={clsx("w-10 h-5 rounded-full relative cursor-pointer transition-all duration-300", isEnabled ? 'bg-primary-medium' : 'bg-gray-300')}>
+      <div className={clsx("absolute top-1 w-3 h-3 bg-white rounded-full shadow-md transition-transform duration-300", isEnabled ? 'translate-x-6' : 'translate-x-1')}></div>
     </div>
   </div>
 );
 
 export default function SettingsPage() {
-  // --- ส่วนตรวจสอบสิทธิ์ (เพิ่มใหม่) ---
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
-  }, [status, router]);
-  // --------------------------------
-
+  // State เดิม
   const [useIrrigation, setUseIrrigation] = useState(true);
   const [useLight, setUseLight] = useState(false);
   const [useFertilizer, setUseFertilizer] = useState(false);
-  const [farmSize, setFarmSize] = useState('100');
-  const [receiveLine, setReceiveLine] = useState(true);
+  const [farmSize, setFarmSize] = useState('');
+  const [totalDevices, setTotalDevices] = useState('');
 
-  // Loading State
-  if (status === 'loading') {
-    return (
-       <div className="min-h-screen flex items-center justify-center bg-background-light text-primary-dark font-mitr">
-          <Loader2 className="animate-spin mr-2" /> กำลังตรวจสอบสิทธิ์...
-       </div>
-    );
-  }
+  // ✅ State ใหม่: ตั้งเวลา
+  const [lightStart, setLightStart] = useState('18:00'); // เวลาเริ่มเปิดไฟ
+  const [lightDuration, setLightDuration] = useState('4'); // จำนวนชั่วโมง
+  const [fertilizerDays, setFertilizerDays] = useState('30'); // รอบใส่ปุ๋ย (วัน)
 
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (status === 'unauthenticated') router.push('/login');
+  }, [status, router]);
+
+  useEffect(() => {
+    if (session?.user?.email) {
+      fetch('/api/farm/info')
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setUseIrrigation(data.use_irrigation ?? true);
+            setUseLight(data.use_light ?? false);
+            setUseFertilizer(data.use_fertilizer ?? false);
+            setFarmSize(data.farm_size || '');
+            setTotalDevices(data.total_devices || '');
+            // ดึงค่าใหม่
+            setLightStart(data.light_start_time || '18:00');
+            setLightDuration(data.light_duration?.toString() || '4');
+            setFertilizerDays(data.fertilizer_interval?.toString() || '30');
+          }
+        })
+        .catch(err => console.error(err));
+    }
+  }, [session]);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      const res = await fetch('/api/farm/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          farm_size: farmSize,
+          total_devices: totalDevices,
+          use_irrigation: useIrrigation,
+          use_light: useLight,
+          use_fertilizer: useFertilizer,
+          // ส่งค่าใหม่ไปบันทึก
+          light_start_time: lightStart,
+          light_duration: parseInt(lightDuration),
+          fertilizer_interval: parseInt(fertilizerDays)
+        })
+      });
+      if (res.ok) alert("บันทึกการตั้งค่าเรียบร้อย!");
+    } catch (error) {
+      console.error(error);
+      alert("บันทึกไม่สำเร็จ");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (status === 'loading') return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin" /></div>;
   if (status === 'unauthenticated') return null;
 
   return (
     <div className="min-h-screen bg-background-light font-mitr pb-24 px-6 pt-8">
       <h1 className="text-2xl font-bold text-primary-dark mb-6">ตั้งค่าการใช้งาน 🛠️</h1>
 
-      {/* Group: ระบบที่ใช้งานในฟาร์ม */}
+      {/* 1. เปิด/ปิด ระบบ */}
       <div className="mb-6">
         <h2 className="text-sm text-gray-500 mb-2 ml-2">ระบบควบคุมที่ติดตั้ง</h2>
         <div className="bg-white rounded-3xl overflow-hidden shadow-lg">
-          <ToggleSwitch 
-            label="ใช้งานระบบรดน้ำ" 
-            isEnabled={useIrrigation} 
-            onToggle={() => setUseIrrigation(!useIrrigation)} 
-            Icon={Droplets} 
-            colorClass="text-blue-500 bg-blue-100"
-          />
-          <ToggleSwitch 
-            label="ใช้งานระบบไฟ/แสง" 
-            isEnabled={useLight} 
-            onToggle={() => setUseLight(!useLight)} 
-            Icon={Lightbulb} 
-            colorClass="text-yellow-600 bg-yellow-100"
-          />
-          <ToggleSwitch 
-            label="ใช้งานระบบปุ๋ย/สารละลาย" 
-            isEnabled={useFertilizer} 
-            onToggle={() => setUseFertilizer(!useFertilizer)} 
-            Icon={Sprout} 
-            colorClass="text-green-500 bg-green-100"
-          />
+          <ToggleSwitch label="ใช้งานระบบรดน้ำ" isEnabled={useIrrigation} onToggle={() => setUseIrrigation(!useIrrigation)} Icon={Droplets} colorClass="text-blue-500 bg-blue-100" />
+          <ToggleSwitch label="ใช้งานระบบไฟ/แสง" isEnabled={useLight} onToggle={() => setUseLight(!useLight)} Icon={Lightbulb} colorClass="text-yellow-600 bg-yellow-100" />
+          <ToggleSwitch label="ใช้งานระบบปุ๋ย/สารละลาย" isEnabled={useFertilizer} onToggle={() => setUseFertilizer(!useFertilizer)} Icon={Sprout} colorClass="text-green-500 bg-green-100" />
         </div>
       </div>
 
-      {/* Group: ข้อมูลฟาร์ม */}
-      <div className="mb-6">
-        <h2 className="text-sm text-gray-500 mb-2 ml-2">ข้อมูลพื้นที่เพาะปลูก</h2>
-        <div className="bg-white rounded-3xl p-5 shadow-lg space-y-4">
-          <div className="flex items-center gap-3">
-             <div className="text-gray-500"><MapPin size={20} /></div>
-             <input
-               type="text"
-               placeholder="ขนาดพื้นที่ปลูก (ตร.ม.)"
-               value={farmSize}
-               onChange={(e) => setFarmSize(e.target.value)}
-               className="flex-1 border-b border-gray-300 p-1 focus:border-primary-medium focus:outline-none font-medium"
-             />
-             <span className="text-sm text-gray-500">ตร.ม.</span>
+      {/* 2. ตั้งค่าเวลา (แสดงเฉพาะเมื่อเปิดใช้ระบบนั้น) */}
+      <div className="space-y-4 mb-6">
+
+        {/* 💡 ตั้งค่าไฟ (โชว์เมื่อเปิดใช้ไฟ) */}
+        {useLight && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-3xl p-5 shadow-sm">
+            <h3 className="text-yellow-800 font-bold mb-3 flex items-center gap-2"><Clock size={18} /> ตั้งเวลาเปิดไฟ</h3>
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="text-xs text-yellow-600">เริ่มเวลา</label>
+                <input type="time" value={lightStart} onChange={(e) => setLightStart(e.target.value)} className="w-full bg-white rounded-xl p-2 text-center font-bold text-gray-700 outline-none border border-yellow-100" />
+              </div>
+              <div className="flex-1">
+                <label className="text-xs text-yellow-600">นาน (ชม.)</label>
+                <input type="number" value={lightDuration} onChange={(e) => setLightDuration(e.target.value)} className="w-full bg-white rounded-xl p-2 text-center font-bold text-gray-700 outline-none border border-yellow-100" />
+              </div>
+            </div>
           </div>
-          <p className="text-xs text-gray-400">ขนาดพื้นที่นี้ใช้ในการคำนวณปริมาณน้ำ/ปุ๋ย</p>
+        )}
+
+        {/* 🌱 ตั้งค่าปุ๋ย (โชว์เมื่อเปิดใช้ปุ๋ย) */}
+        {useFertilizer && (
+          <div className="bg-green-50 border border-green-200 rounded-3xl p-5 shadow-sm">
+            <h3 className="text-green-800 font-bold mb-3 flex items-center gap-2"><Calendar size={18} /> รอบการใส่ปุ๋ย</h3>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-green-700">ใส่ปุ๋ยทุกๆ</span>
+              <input type="number" value={fertilizerDays} onChange={(e) => setFertilizerDays(e.target.value)} className="w-20 bg-white rounded-xl p-2 text-center font-bold text-gray-700 outline-none border border-green-100" />
+              <span className="text-sm text-green-700">วัน</span>
+            </div>
+            <p className="text-xs text-green-600 mt-2">*ระบบจะแจ้งเตือนเมื่อครบกำหนด</p>
+          </div>
+        )}
+      </div>
+
+      {/* 3. ข้อมูลทั่วไป */}
+      <div className="mb-6 space-y-4">
+        <div>
+          <h2 className="text-sm text-gray-500 mb-2 ml-2">ข้อมูลพื้นที่</h2>
+          <div className="bg-white rounded-3xl p-5 shadow-lg flex items-center gap-3">
+            <MapPin size={20} className="text-gray-500" />
+            <input type="text" placeholder="ขนาดพื้นที่" value={farmSize} onChange={(e) => setFarmSize(e.target.value)} className="flex-1 border-b p-1 outline-none font-medium" />
+            <span className="text-sm text-gray-500">ตร.ม.</span>
+          </div>
+        </div>
+        <div>
+          <h2 className="text-sm text-gray-500 mb-2 ml-2">อุปกรณ์ในพื้นที่</h2>
+          <div className="bg-white rounded-3xl p-5 shadow-lg flex items-center gap-3">
+            <Cpu size={20} className="text-gray-500" />
+            <input type="text" placeholder="จำนวนอุปกรณ์ (ชิ้น)" value={totalDevices} onChange={(e) => setTotalDevices(e.target.value)} className="flex-1 border-b p-1 outline-none font-medium" />
+            <span className="text-sm text-gray-500">ชิ้น</span>
+          </div>
         </div>
       </div>
-      
-       {/* Group: Notification Config */}
-       {/* <div className="mb-6">
-        <h2 className="text-sm text-gray-500 mb-2 ml-2">การตั้งค่าแจ้งเตือน</h2>
-        <div className="bg-white rounded-3xl overflow-hidden shadow-lg">
-          <ToggleSwitch 
-            label="รับแจ้งเตือนผ่าน LINE Notify" 
-            isEnabled={receiveLine} 
-            onToggle={() => setReceiveLine(!receiveLine)} 
-            Icon={Bell} 
-            colorClass="text-green-500 bg-green-100"
-          />
-           <div className="p-4 border-t border-gray-100">
-               <button className="w-full text-center py-2 bg-gray-100 text-primary-dark font-medium rounded-xl hover:bg-gray-200 transition-colors">
-                  เชื่อมต่อ LINE Token
-               </button>
-           </div>
-        </div>
-      </div> */}
 
-      <button className="w-full py-4 bg-primary-dark text-white font-bold rounded-3xl shadow-lg mt-4">
-        บันทึกการตั้งค่า
+      <button onClick={handleSave} disabled={saving} className="w-full py-4 bg-primary-dark text-white font-bold rounded-3xl shadow-lg mt-4 flex justify-center items-center gap-2">
+        {saving ? <Loader2 className="animate-spin" /> : <><Save size={20} /> บันทึกการตั้งค่า</>}
       </button>
     </div>
   );
