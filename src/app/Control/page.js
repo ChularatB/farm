@@ -14,7 +14,6 @@ export default function ControlPage() {
   const [isAuto, setIsAuto] = useState(true);
   const [loading, setLoading] = useState(true);
   
-  // สถานะการทำงานของอุปกรณ์ (เปิด/ปิด)
   const [isIrrigationOn, setIsIrrigationOn] = useState(false);
   const [isLightOn, setIsLightOn] = useState(false);       // ✅ เพิ่มสถานะไฟ
   const [isFertilizerOn, setIsFertilizerOn] = useState(false); // ✅ เพิ่มสถานะปุ๋ย
@@ -50,7 +49,7 @@ export default function ControlPage() {
         .then(res => res.json())
         .then(data => {
           if (data.success) {
-            console.log("Fetched Config:", data); // เช็คใน Console ว่าได้ค่ามาจริงไหม
+            console.log("Fetched Config:", data);
             setConfig({
               showWater: data.use_irrigation ?? true,
               showLight: data.use_light ?? false,
@@ -87,7 +86,7 @@ export default function ControlPage() {
       const res = await fetch('/api/sensors');
       const json = await res.json();
       if (json.data && json.data.length > 0) {
-        // อัปเดตสถานะปั๊มน้ำ (สมมติว่า 0 = ON, 1 = OFF ตาม Relay Active Low)
+        // อัปเดตสถานะปั๊มน้ำ (0 = ON, 1 = OFF ตาม Relay Active Low)
         setIsIrrigationOn(json.data[0].pump_status === 0);
         
         // *อนาคต: ถ้ามี sensor สถานะไฟ/ปุ๋ย ก็มาใส่ตรงนี้ได้
@@ -196,7 +195,7 @@ export default function ControlPage() {
                  <h3 className="font-bold text-primary-dark">แผงควบคุมหลัก</h3>
                  {/* Auto/Manual Toggle */}
                  <div onClick={toggleMode} className={clsx("flex p-1 rounded-full w-24 cursor-pointer transition-colors", isAuto ? 'bg-primary-medium' : 'bg-gray-200')}>
-                    <div className={clsx("p-1 rounded-full text-xs font-bold w-1/2 text-center transition-all shadow-sm", isAuto ? 'bg-white text-primary-dark translate-x-0' : 'bg-white text-gray-500 translate-x-full ml-auto')}>{isAuto ? 'Auto' : 'Manual'}</div>
+                    <div className={clsx("p-1 rounded-full text-xs font w-1/2 text-center transition-all shadow-sm", isAuto ? 'bg-white text-primary-dark translate-x-0' : 'bg-white text-gray-500 ml-auto')}>{isAuto ? 'Auto' : 'Manual'}</div>
                  </div>
              </div>
 

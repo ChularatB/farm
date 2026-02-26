@@ -9,9 +9,8 @@ export async function POST(request) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { name, email, phone } = await request.json();
-    const oldEmail = session.user.email; // ใช้อีเมลเดิมเป็นตัวอ้างอิงเพื่อ update
+    const oldEmail = session.user.email; 
 
-    // อัปเดตข้อมูลในตาราง users
     const query = `
       UPDATE \`smart-farm-c9d48.smartfarm.users\`
       SET name = @name, email = @email, phone = @phone

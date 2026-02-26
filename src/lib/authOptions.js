@@ -17,17 +17,17 @@ export const authOptions = {
         }
 
         try {
-          // ดึง device_id มาด้วย! เพื่อเอาไปใช้ Query ข้อมูลฟาร์ม
+          // ✅ 1. เพิ่ม user_id เข้าไปใน SELECT
           const query = `
-            SELECT email, name, password, device_id 
+            SELECT user_id, email, phone, name, password, device_id 
             FROM \`smart-farm-c9d48.smartfarm.users\` 
-            WHERE email = @email
+            WHERE user_id = @user_id
             LIMIT 1
           `;
           
           const [rows] = await bigquery.query({
             query,
-            params: { email: credentials.username }
+            params: { user_id: credentials.username }
           });
 
           const user = rows[0];
@@ -37,10 +37,12 @@ export const authOptions = {
           }
 
           return { 
-            id: user.email, 
+            id: user.user_id || user.email,
+            user_id: user.user_id, 
+            email: user.email, 
             name: user.name, 
-            email: user.email,
-            device_id: user.device_id // ส่ง device_id กลับไปด้วย
+            phone: user.phone,
+            device_id: user.device_id 
           };
 
         } catch (error) {
@@ -52,22 +54,28 @@ export const authOptions = {
   ],
   pages: { signIn: '/login' },
   callbacks: {
-    async session({ session, token }) {
-      if (token) {
-        session.user.id = token.sub; 
-        session.user.name = token.name;
-        session.user.email = token.email;
-        session.user.device_id = token.device_id;
-      }
-      return session;
-    },
+    // ✅ 3. เอาข้อมูลมาฝังใน Token
     async jwt({ token, user }) {
         if (user) {
+            token.user_id = user.user_id; 
             token.name = user.name;
+            token.phone = user.phone;
             token.email = user.email;
             token.device_id = user.device_id; 
         }
         return token;
+    },
+    // ✅ 4. ส่งข้อมูลจาก Token ไปให้หน้าเว็บใช้งานผ่าน Session
+    async session({ session, token }) {
+      if (token) {
+        session.user.id = token.sub; 
+        session.user.user_id = token.user_id; 
+        session.user.name = token.name;
+        session.user.phone = token.phone;
+        session.user.email = token.email;
+        session.user.device_id = token.device_id;
+      }
+      return session;
     }
   },
   session: { strategy: "jwt" },

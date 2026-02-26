@@ -17,10 +17,11 @@ export default function EditProfilePage() {
       setFormData({
         name: session.user.name || '',
         email: session.user.email || '',
-        phone: session.user.phone || '' // ต้องแน่ใจว่าใน session มี phone นะ (แก้ใน authOptions)
+        phone: session.user.phone || '' 
       });
     }
   }, [session]);
+  console.log("Session Data:", session);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -34,9 +35,9 @@ export default function EditProfilePage() {
       });
 
       if (res.ok) {
-        await update(formData); // อัปเดต Session หน้าเว็บทันที
+        await update(formData);
         alert('บันทึกข้อมูลสำเร็จ!');
-        router.push('/Profile'); // กลับไปหน้า Profile
+        router.push('/Profile');
       } else {
         alert('บันทึกไม่สำเร็จ');
       }

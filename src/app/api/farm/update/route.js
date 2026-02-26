@@ -40,8 +40,8 @@ export async function POST(request) {
       params,
       types: {
         email: 'STRING',
-        farm_size: 'STRING',       // ต้องตรงกับที่สร้าง Table ไว้ (STRING)
-        total_devices: 'STRING',   // ต้องตรงกับที่สร้าง Table ไว้ (STRING)
+        farm_size: 'STRING',       
+        total_devices: 'STRING',   
         use_irrigation: 'BOOL',
         use_light: 'BOOL',
         use_fertilizer: 'BOOL'
