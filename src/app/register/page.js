@@ -54,7 +54,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background-light flex items-center justify-center px-4 font-mitr py-10">
+    <div className="min-h-screen bg-background-light flex justify-center items-start  p-5 font-mitr py-10">
       <div className="bg-white p-8 rounded-[40px] shadow-xl w-full max-w-md border border-secondary-light">
         
         <div className="text-center mb-6">

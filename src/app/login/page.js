@@ -42,9 +42,9 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-background-light flex items-center justify-center px-4 font-mitr">
+    <div className="min-h-screen bg-background-light flex items-start justify-center p-5 font-mitr">
       <div className="bg-white p-8 rounded-[40px] shadow-xl w-full max-w-md border border-secondary-light">
-        
+
         {/* Logo Section */}
         <div className="text-center mb-8">
           <div className="bg-primary-medium w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 shadow-md animate-bounce-slow">
