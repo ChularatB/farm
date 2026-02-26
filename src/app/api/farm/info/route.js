@@ -8,16 +8,16 @@ export async function GET(request) {
     const session = await getServerSession(authOptions);
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    // ✅ เปลี่ยนมาดึง usr_id แทน email หรือ device_id
-    const user_id = session.user.usr_id;
+    const user_id = session.user.user_id;
 
-    // กันเหนียว เผื่อ session ยังไม่มี usr_id
     if (!user_id) {
       return NextResponse.json({ error: 'User ID not found in session' }, { status: 400 });
     }
 
     const query = `
-      SELECT farm_size, total_devices, phone, use_irrigation, use_light, use_fertilizer
+      SELECT 
+        farm_size, total_devices, phone, use_irrigation, use_light, use_fertilizer,
+        light_start_time, light_duration, fertilizer_interval
       FROM \`smart-farm-c9d48.smartfarm.users\` 
       WHERE user_id = @user_id
       LIMIT 1
@@ -34,9 +34,12 @@ export async function GET(request) {
         farm_size: rows[0].farm_size || '',
         phone: rows[0].phone || '',
         total_devices: rows[0].total_devices || '',
-        use_irrigation: rows[0].use_irrigation, // ค่า Boolean (true/false)
+        use_irrigation: rows[0].use_irrigation, 
         use_light: rows[0].use_light,
-        use_fertilizer: rows[0].use_fertilizer
+        use_fertilizer: rows[0].use_fertilizer,
+        light_start_time: rows[0].light_start_time || '18:00',
+        light_duration: rows[0].light_duration || 4,
+        fertilizer_interval: rows[0].fertilizer_interval || 30
       });
     } else {
       return NextResponse.json({ success: true, farm_size: '', phone: '', total_devices: '', use_irrigation: true });

@@ -9,17 +9,19 @@ export async function POST(request) {
     if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
     const { name, email, phone } = await request.json();
-    const oldEmail = session.user.email; 
+    
+    // ใช้ user_id เป็นตัวค้นหาแทนอีเมล
+    const user_id = session.user.user_id; 
 
     const query = `
       UPDATE \`smart-farm-c9d48.smartfarm.users\`
       SET name = @name, email = @email, phone = @phone
-      WHERE email = @oldEmail
+      WHERE user_id = @user_id
     `;
 
     await bigquery.query({
       query,
-      params: { name, email, phone, oldEmail }
+      params: { name, email, phone, user_id }
     });
 
     return NextResponse.json({ success: true });

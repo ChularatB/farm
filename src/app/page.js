@@ -82,7 +82,7 @@ export default function Dashboard() {
     <div className="max-h-screen bg-background-light font-mitr pb-24 px-6 pt-8">
       
       {/* Header */}
-      <header className="flex justify-between items-center mb-6">
+      <header className="flex justify-between mb-6">
         <div>
           {/* แสดงชื่อ User จาก Session */}
           <p className="text-xl text-gray-500">

@@ -17,21 +17,22 @@ export const authOptions = {
         }
 
         try {
-          // ✅ 1. เพิ่ม user_id เข้าไปใน SELECT
+          // ✅ เติม device_id กลับมาให้ด้วย จะได้ไม่มีปัญหากับหน้ากล้อง
           const query = `
-            SELECT user_id, email, phone, name, password, device_id 
+            SELECT user_id, email, phone, name, password, device_id
             FROM \`smart-farm-c9d48.smartfarm.users\` 
-            WHERE user_id = @user_id
+            WHERE email = @email
             LIMIT 1
           `;
           
           const [rows] = await bigquery.query({
             query,
-            params: { user_id: credentials.username }
+            params: { email: credentials.username }
           });
 
           const user = rows[0];
 
+          // เช็ครหัสผ่านที่เข้ารหัสไว้
           if (!user || !(await compare(credentials.password, user.password))) {
              throw new Error('อีเมลหรือรหัสผ่านไม่ถูกต้อง');
           }
@@ -42,7 +43,7 @@ export const authOptions = {
             email: user.email, 
             name: user.name, 
             phone: user.phone,
-            device_id: user.device_id 
+            device_id: user.device_id, // ✅ คืนค่า device_id กลับไป
           };
 
         } catch (error) {
@@ -54,18 +55,16 @@ export const authOptions = {
   ],
   pages: { signIn: '/login' },
   callbacks: {
-    // ✅ 3. เอาข้อมูลมาฝังใน Token
     async jwt({ token, user }) {
         if (user) {
             token.user_id = user.user_id; 
             token.name = user.name;
             token.phone = user.phone;
             token.email = user.email;
-            token.device_id = user.device_id; 
+            token.device_id = user.device_id; // ✅ ใส่ใน Token
         }
         return token;
     },
-    // ✅ 4. ส่งข้อมูลจาก Token ไปให้หน้าเว็บใช้งานผ่าน Session
     async session({ session, token }) {
       if (token) {
         session.user.id = token.sub; 
@@ -73,7 +72,7 @@ export const authOptions = {
         session.user.name = token.name;
         session.user.phone = token.phone;
         session.user.email = token.email;
-        session.user.device_id = token.device_id;
+        session.user.device_id = token.device_id; // ✅ ส่งไปให้หน้าเว็บใช้
       }
       return session;
     }

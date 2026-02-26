@@ -1,6 +1,7 @@
 // src/app/api/auth/register/route.js
 import { NextResponse } from 'next/server';
 import bigquery from '@/lib/bigquery';
+import { hash } from 'bcrypt'; // ✅ นำเข้าฟังก์ชันเข้ารหัส
 
 export async function POST(request) {
   try {
@@ -8,6 +9,9 @@ export async function POST(request) {
 
     const randomChars =  Math.floor(1000 + Math.random() * 9000);
     const user_id = `user-${randomChars}`;
+
+    // ✅ เข้ารหัสผ่านก่อนเซฟลงฐานข้อมูล (ใช้ salt 10 รอบ เพื่อความปลอดภัย)
+    const hashedPassword = await hash(password, 10);
 
     const query = `
       INSERT INTO \`smart-farm-c9d48.smartfarm.users\` 
@@ -23,7 +27,7 @@ export async function POST(request) {
         name: name, 
         email: email, 
         phone: phone, 
-        password: password
+        password: hashedPassword 
       } 
     });
 
