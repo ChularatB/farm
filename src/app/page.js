@@ -1,42 +1,37 @@
 // src/app/page.js
 "use client";
 import { useState, useEffect } from 'react';
-import { useSession } from 'next-auth/react'; // 1. นำเข้า useSession
-import { useRouter } from 'next/navigation';   // 2. นำเข้า useRouter
-import { CloudRain, Droplets, Sun, Thermometer, Wind, Loader2 } from 'lucide-react';
-import { AreaChart, Area, XAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+import { useSession } from 'next-auth/react'; 
+import { useRouter } from 'next/navigation';   
+import { CloudRain, Droplets, Sun, Thermometer, Wind, Loader2, TrendingUp } from 'lucide-react';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 export default function Dashboard() {
-  // --- ส่วนตรวจสอบสิทธิ์ (Auth) ---
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // --- State ของหน้า Dashboard ---
-  const [activeTab, setActiveTab] = useState('overview'); // overview, history
-  const [sensorData, setSensorData] = useState([]); // ข้อมูลกราฟ
-  const [latest, setLatest] = useState(null);       // ข้อมูลล่าสุด
-  const [loadingData, setLoadingData] = useState(true); // สถานะโหลดข้อมูล (แยกกับสถานะโหลด Session)
+  const [activeTab, setActiveTab] = useState('overview'); 
+  const [latest, setLatest] = useState(null);       
+  const [loadingData, setLoadingData] = useState(true); 
 
-  // 1. Effect เช็ค Login: ถ้ายังไม่ล็อกอิน ให้ดีดไปหน้า Login
+  // ✅ ค่าเริ่มต้นให้ดึง ALL จะได้เห็นข้อมูลเก่าทันที
+  const [activeFilter, setActiveFilter] = useState('ALL'); 
+  const [historyData, setHistoryData] = useState([]);
+  const [summary, setSummary] = useState({ avgTemp: 0, avgHumid: 0, avgSoil: 0 });
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/login');
-    }
+    if (status === 'unauthenticated') router.push('/login');
   }, [status, router]);
 
-  // 2. ฟังก์ชันดึงข้อมูล (Fetch Data)
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/sensors');
+      const res = await fetch('/api/sensors?range=ALL'); // หน้าแรกก็ให้ดึงข้อมูลล่าสุดที่มี
       const json = await res.json();
       
       if (json.data && json.data.length > 0) {
-        // API ส่งมาใหม่ -> เก่า (DESC) แต่กราฟต้องการ เก่า -> ใหม่ (ASC)
         const reversedData = [...json.data].reverse();
-        
-        setSensorData(reversedData);
-        // ข้อมูลล่าสุดคือตัวสุดท้ายของ array ที่กลับด้านแล้ว
-        setLatest(reversedData[reversedData.length - 1]);
+        setLatest(reversedData[reversedData.length - 1]); 
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -45,25 +40,95 @@ export default function Dashboard() {
     }
   };
 
-  // 3. Effect ดึงข้อมูล: ทำงานเฉพาะตอนล็อกอินผ่านแล้ว (authenticated)
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/sensors?range=${activeFilter}`);
+      const json = await res.json();
+      
+      if (json.data && json.data.length > 0) {
+        // หาค่าเฉลี่ยภาพรวม
+        const avgT = json.data.reduce((acc, curr) => acc + (curr.temperature || 0), 0) / json.data.length;
+        const avgH = json.data.reduce((acc, curr) => acc + (curr.humidity || 0), 0) / json.data.length;
+        const avgS = json.data.reduce((acc, curr) => acc + (curr.soil_moisture || 0), 0) / json.data.length;
+        
+        setSummary({
+          avgTemp: avgT.toFixed(1),
+          avgHumid: avgH.toFixed(1),
+          avgSoil: avgS.toFixed(1)
+        });
+
+        // 🧠 ระบบ AI บดข้อมูล (Grouping Data) 🧠
+        const groupedMap = new Map();
+
+        json.data.reverse().forEach(item => {
+          const date = new Date(item.timestamp);
+          let timeLabel = '';
+
+          // ✅ จัดชื่อแกน X ตามที่แกขอเป๊ะๆ!
+          if (activeFilter === '1H') {
+            timeLabel = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }); // รายนาที (14:30)
+          } else if (activeFilter === '24H') {
+            timeLabel = date.toLocaleTimeString('th-TH', { hour: '2-digit' }) + ':00'; // รายชั่วโมง (14:00, 15:00)
+          } else if (activeFilter === '7D') {
+            const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสฯ', 'ศุกร์', 'เสาร์'];
+            timeLabel = days[date.getDay()]; // จันทร์, อังคาร...
+          } else if (activeFilter === '30D') {
+            timeLabel = date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' }); // 1 ก.พ.
+          } else {
+            timeLabel = date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' }); // ALL
+          }
+
+          // จับยัดเข้ากลุ่มและบวกค่าสะสมไว้หาค่าเฉลี่ย
+          if (!groupedMap.has(timeLabel)) {
+            groupedMap.set(timeLabel, { name: timeLabel, tempSum: 0, humidSum: 0, soilSum: 0, count: 0 });
+          }
+          const group = groupedMap.get(timeLabel);
+          group.tempSum += item.temperature || 0;
+          group.humidSum += item.humidity || 0;
+          group.soilSum += item.soil_moisture || 0;
+          group.count += 1;
+        });
+
+        // แปลงผลลัพธ์ที่จัดกลุ่มแล้วออกมาใช้โชว์กราฟ
+        const formatted = Array.from(groupedMap.values()).map(group => ({
+          name: group.name,
+          temp: Number((group.tempSum / group.count).toFixed(1)),
+          humid: Number((group.humidSum / group.count).toFixed(1)),
+          soil: Number((group.soilSum / group.count).toFixed(1))
+        }));
+
+        setHistoryData(formatted);
+      } else {
+        setHistoryData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching history:", error);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
   useEffect(() => {
     if (status === 'authenticated') {
-      fetchData(); // ดึงครั้งแรก
-      const interval = setInterval(fetchData, 10000); // ดึงใหม่ทุก 10 วิ
-      return () => clearInterval(interval);
+      if (activeTab === 'overview') {
+        fetchData();
+        const interval = setInterval(fetchData, 10000); 
+        return () => clearInterval(interval);
+      } else if (activeTab === 'history') {
+        fetchHistory(); 
+      }
     }
-  }, [status]);
+  }, [status, activeTab, activeFilter]); 
 
-  // ฟังก์ชันจัดรูปแบบเวลา
+  // ✅ จัดรูปแบบเวลาใหม่ ให้มี วันที่ และ เดือน 
   const formatTime = (timestamp) => {
     if (!timestamp) return "";
     const date = new Date(timestamp);
-    return date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+    // จะได้หน้าตาแบบ "28 ก.พ. 14:30" 
+    return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
   };
 
-  // --- ส่วนการแสดงผล (Render) ---
-
-  // A. ถ้ากำลังเช็ค Session ให้หมุนติ้วๆ รอไปก่อน
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background-light text-primary-dark font-bold font-mitr">
@@ -72,24 +137,20 @@ export default function Dashboard() {
     );
   }
 
-  // B. ถ้ายังไม่ล็อกอิน (และกำลังจะ Redirect) ไม่ต้องโชว์อะไร
-  if (status === 'unauthenticated') {
-    return null; 
-  }
+  if (status === 'unauthenticated') return null; 
 
-  // C. ถ้าล็อกอินแล้ว โชว์หน้า Dashboard เต็มๆ
   return (
-    <div className="max-h-screen bg-background-light font-mitr pb-24 px-6 pt-8">
+    <div className="h-screen bg-background-light font-mitr pb-24 px-6 pt-8 overflow-y-auto">
       
       {/* Header */}
       <header className="flex justify-between mb-6">
         <div>
-          {/* แสดงชื่อ User จาก Session */}
           <p className="text-xl text-gray-500">
             ยินดีต้อนรับ, <span className="text-primary-dark font-bold">{session?.user?.name || 'ชาวสวน'}</span>!
           </p>
+          {/* ✅ โชว์เวลาแบบเต็มๆ ตรงนี้ */}
           <p className="text-xs text-gray-400">
-            อัปเดตล่าสุด: {latest ? formatTime(latest.timestamp) : (loadingData ? 'กำลังโหลด...' : '-')}
+            อัปเดตล่าสุด: <span className="font-bold text-primary-medium">{latest ? formatTime(latest.timestamp) : (loadingData ? 'กำลังโหลด...' : '-')}</span>
           </p>
         </div>
         <div className="flex gap-2">
@@ -109,7 +170,7 @@ export default function Dashboard() {
               : 'text-gray-400 hover:text-primary-dark'
             }`}
           >
-            {tab === 'overview' ? 'ภาพรวม' : 'ประวัติ'}
+            {tab === 'overview' ? 'ภาพรวม' : 'ประวัติย้อนหลัง'}
           </button>
         ))}
       </div>
@@ -118,11 +179,9 @@ export default function Dashboard() {
       {activeTab === 'overview' && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           
-          {/* Status Card ใหญ่ */}
-          <div className="bg-white rounded-[30px] p-6 shadow-md text-center relative overflow-hidden">
+          <div className="bg-white rounded-[30px] p-6 shadow-md text-center relative overflow-hidden border border-secondary-light">
              <div className={`absolute top-0 left-0 w-full h-2 ${latest?.soil_moisture < 40 ? 'bg-red-500' : 'bg-primary-medium'}`}></div>
-             <h2 className="text-gray-500 mb-4">สถานะระบบโดยรวม</h2>
-             {/* Logic เช็คสถานะคร่าวๆ */}
+             <h2 className="text-gray-500 mb-4 font-bold">สถานะระบบโดยรวม</h2>
              <div className={`text-5xl font-bold mb-2 ${latest?.soil_moisture < 40 ? 'text-red-500' : 'text-green-500'}`}>
                {loadingData ? '...' : (latest?.soil_moisture < 40 ? 'Warning' : 'Normal')}
              </div>
@@ -130,35 +189,32 @@ export default function Dashboard() {
                {loadingData 
                  ? 'กำลังเชื่อมต่อกับเซ็นเซอร์...' 
                  : (latest?.soil_moisture < 40 
-                     ? 'ความชื้นในดินต่ำกว่ากำหนด ระบบรดน้ำกำลังทำงาน' 
+                     ? 'ความชื้นในดินต่ำกว่ากำหนด ระบบกำลังแจ้งเตือน' 
                      : 'ระบบทำงานปกติ ค่าความชื้นและอุณหภูมิอยู่ในเกณฑ์ที่กำหนด')}
              </p>
           </div>
 
-          {/* Grid Sensors */}
           <div className="grid grid-cols-1 gap-4">
-            {/* Temperature */}
             <div className="bg-white rounded-3xl p-5 flex items-center justify-between shadow-sm border border-secondary-light">
               <div className="flex items-center gap-3">
                 <div className="bg-red-100 p-3 rounded-full text-red-500"><Thermometer /></div>
                 <div>
-                  <div className="text-sm text-gray-400">อุณหภูมิอากาศ</div>
+                  <div className="text-sm text-gray-400 font-bold">อุณหภูมิอากาศ</div>
                   <div className="text-2xl font-bold text-gray-700">
                     {latest?.temperature ? parseFloat(latest.temperature).toFixed(1) : '--'}°C
                   </div>
                 </div>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-lg ${latest?.temperature > 35 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
+              <span className={`text-xs px-2 py-1 rounded-lg font-bold ${latest?.temperature > 35 ? 'bg-red-100 text-red-600' : 'bg-green-100 text-green-600'}`}>
                 {latest?.temperature > 35 ? 'ร้อน' : 'ปกติ'}
               </span>
             </div>
 
-            {/* Humidity */}
             <div className="bg-white rounded-3xl p-5 flex items-center justify-between shadow-sm border border-secondary-light">
               <div className="flex items-center gap-3">
                 <div className="bg-blue-100 p-3 rounded-full text-blue-500"><Droplets /></div>
                 <div>
-                  <div className="text-sm text-gray-400">ความชื้นอากาศ</div>
+                  <div className="text-sm text-gray-400 font-bold">ความชื้นอากาศ</div>
                   <div className="text-2xl font-bold text-gray-700">
                      {latest?.humidity ? parseFloat(latest.humidity).toFixed(1) : '--'}%
                   </div>
@@ -166,19 +222,18 @@ export default function Dashboard() {
               </div>
             </div>
             
-             {/* Soil Moisture */}
              <div className="bg-white rounded-3xl p-5 flex items-center justify-between shadow-sm border border-secondary-light">
               <div className="flex items-center gap-3">
                 <div className="bg-amber-100 p-3 rounded-full text-amber-700"><Wind /></div>
                 <div>
-                  <div className="text-sm text-gray-400">ความชื้นในดิน</div>
+                  <div className="text-sm text-gray-400 font-bold">ความชื้นในดิน</div>
                   <div className="text-2xl font-bold text-gray-700">
-                    {latest?.soil_moisture ? parseInt(latest.soil_moisture) : '--'}
+                    {latest?.soil_moisture ? parseInt(latest.soil_moisture) : '--'}%
                   </div>
                 </div>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-lg ${latest?.soil_moisture < 2000 ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
-                {latest?.soil_moisture > 2000 ? 'แห้งมากอห' : 'เริ่ดเลยล่ะ'}
+              <span className={`text-xs px-2 py-1 rounded-lg font-bold ${latest?.soil_moisture < 40 ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
+                {latest?.soil_moisture < 40 ? 'ดินแห้ง' : 'ชุ่มชื้น'}
               </span>
             </div>
           </div>
@@ -187,67 +242,94 @@ export default function Dashboard() {
 
       {/* --- CONTENT: HISTORY --- */}
       {activeTab === 'history' && (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-           {/* Filters */}
-           <div className="flex justify-end gap-2 text-xs text-gray-400 font-bold">
-              <span>Realtime (100 ล่าสุด)</span>
-           </div>
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
+          
+          {/* ✅ เพิ่มปุ่ม ALL (ทั้งหมด) ให้กด */}
+          <div className="flex justify-end gap-2 text-xs text-gray-400 font-bold bg-white p-2 rounded-full shadow-sm w-fit ml-auto">
+            {['1H', '24H', '7D', '30D', 'ALL'].map(filter => (
+              <button 
+                key={filter}
+                onClick={() => setActiveFilter(filter)}
+                disabled={loadingHistory}
+                className={`px-3 py-1.5 rounded-full transition-all duration-300 ${activeFilter === filter ? 'bg-primary-medium text-white shadow-md scale-105' : 'hover:bg-gray-50'}`}
+              >
+                {filter === 'ALL' ? 'ทั้งหมด' : filter}
+              </button>
+            ))}
+          </div>
 
-           {/* Chart 1: Soil Moisture */}
-           <div className="bg-white p-4 rounded-3xl shadow-sm">
-              <h3 className="text-sm text-gray-500 mb-4 ml-2">ความชื้นในดิน (ล่าสุด)</h3>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={sensorData}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E0ECDE" />
-                    <XAxis 
-                      dataKey="timestamp" 
-                      tickFormatter={formatTime} 
-                      tick={{fontSize: 10}} 
-                      axisLine={false} 
-                      tickLine={false} 
-                      interval={10} 
-                    />
-                    <Tooltip 
-                      labelFormatter={formatTime}
-                      cursor={{fill: '#F0F7F0'}} 
-                      contentStyle={{borderRadius: '10px', border: 'none'}} 
-                    />
-                    <Bar dataKey="soil_moisture" fill="#68B2A0" radius={[4, 4, 4, 4]} name="ความชื้นดิน" />
-                  </BarChart>
-                </ResponsiveContainer>
+          {loadingHistory ? (
+            <div className="flex flex-col items-center justify-center py-20 text-primary-medium">
+              <Loader2 className="animate-spin mb-3" size={40} />
+              <p className="text-sm font-bold animate-pulse">กำลังดึงข้อมูลประวัติ...</p>
+            </div>
+          ) : historyData.length === 0 ? (
+            <div className="bg-white p-8 rounded-[32px] shadow-sm text-center border border-secondary-light mt-4">
+              <Thermometer className="mx-auto text-gray-300 mb-2" size={48} />
+              <p className="text-gray-500 font-bold">ไม่พบข้อมูลในช่วงเวลานี้</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-3 gap-3">
+                 <div className="bg-white p-3 rounded-2xl shadow-sm border border-yellow-100 text-center">
+                    <Sun size={20} className="mx-auto text-yellow-500 mb-1"/>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold">อุณหภูมิเฉลี่ย</p>
+                    <p className="text-lg font-bold text-yellow-600">{summary.avgTemp}°</p>
+                 </div>
+                 <div className="bg-white p-3 rounded-2xl shadow-sm border border-blue-100 text-center">
+                    <CloudRain size={20} className="mx-auto text-blue-500 mb-1"/>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold">ชื้นอากาศเฉลี่ย</p>
+                    <p className="text-lg font-bold text-blue-600">{summary.avgHumid}%</p>
+                 </div>
+                 <div className="bg-white p-3 rounded-2xl shadow-sm border border-green-100 text-center">
+                    <Droplets size={20} className="mx-auto text-green-500 mb-1"/>
+                    <p className="text-[10px] text-gray-400 uppercase font-bold">ชื้นดินเฉลี่ย</p>
+                    <p className="text-lg font-bold text-green-600">{summary.avgSoil}%</p>
+                 </div>
               </div>
-           </div>
 
-           {/* Chart 2: Temperature */}
-           <div className="bg-white p-4 rounded-3xl shadow-sm">
-              <h3 className="text-sm text-gray-500 mb-4 ml-2">อุณหภูมิอากาศ</h3>
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={sensorData}>
-                    <defs>
-                      <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#2C6975" stopOpacity={0.8}/>
-                        <stop offset="95%" stopColor="#2C6975" stopOpacity={0}/>
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E0ECDE" />
-                    <XAxis 
-                      dataKey="timestamp" 
-                      tickFormatter={formatTime} 
-                      tick={{fontSize: 10}} 
-                      axisLine={false} 
-                      interval={10}
-                    />
-                    <Tooltip 
-                      labelFormatter={formatTime}
-                      contentStyle={{borderRadius: '10px', border: 'none'}} 
-                    />
-                    <Area type="monotone" dataKey="temperature" stroke="#2C6975" fillOpacity={1} fill="url(#colorTemp)" name="อุณหภูมิ" />
-                  </AreaChart>
-                </ResponsiveContainer>
+              <div className="bg-white p-5 rounded-[32px] shadow-lg border border-secondary-light">
+                <h3 className="text-sm font-bold text-gray-600 mb-4 flex items-center gap-2">
+                  <TrendingUp size={18} className="text-yellow-500"/> แนวโน้มอุณหภูมิ
+                </h3>
+                <div className="h-56 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={historyData}>
+                      <defs>
+                        <linearGradient id="colorTemp" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.4}/>
+                          <stop offset="95%" stopColor="#f59e0b" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="name" tick={{fontSize: 10, fill: '#9ca3af'}} axisLine={false} tickLine={false} />
+                      <YAxis tick={{fontSize: 10, fill: '#9ca3af'}} axisLine={false} tickLine={false} domain={['dataMin - 2', 'dataMax + 2']} />
+                      <Tooltip contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                      <Area name="อุณหภูมิ (°C)" type="monotone" dataKey="temp" stroke="#f59e0b" strokeWidth={3} fillOpacity={1} fill="url(#colorTemp)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               </div>
-           </div>
+
+              <div className="bg-white p-5 rounded-[32px] shadow-lg border border-secondary-light">
+                <h3 className="text-sm font-bold text-gray-600 mb-4 flex items-center gap-2">
+                  <Droplets size={18} className="text-blue-500"/> ปริมาณความชื้น
+                </h3>
+                <div className="h-56 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={historyData}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis dataKey="name" tick={{fontSize: 10, fill: '#9ca3af'}} axisLine={false} tickLine={false} />
+                      <YAxis tick={{fontSize: 10, fill: '#9ca3af'}} axisLine={false} tickLine={false} />
+                      <Tooltip cursor={{fill: '#f8fafc'}} contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'}} />
+                      <Bar name="ความชื้นอากาศ (%)" dataKey="humid" fill="#60a5fa" radius={[4, 4, 0, 0]} barSize={6} />
+                      <Bar name="ความชื้นดิน (%)" dataKey="soil" fill="#34d399" radius={[4, 4, 0, 0]} barSize={6} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 

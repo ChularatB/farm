@@ -102,10 +102,10 @@ export default function Profile() {
                    <p className="text-[10px] text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1"><Hash size={10}/> USER ID</p>
                    <p className="text-sm font-bold text-primary-dark font-mono truncate">{session?.user?.user_id}</p>
                 </div>
-                {/* <div className="bg-white flex-1 px-3 py-2 rounded-xl shadow-sm border border-secondary-light text-center">
+                <div className="bg-white flex-1 px-3 py-2 rounded-xl shadow-sm border border-secondary-light text-center">
                    <p className="text-[10px] text-gray-400 uppercase tracking-wider flex items-center justify-center gap-1"><Hash size={10}/> DEVICE ID</p>
                    <p className="text-sm font-bold text-primary-dark font-mono truncate">{session?.user?.device_id || 'ยังไม่ผูก'}</p>
-                </div> */}
+                </div>
             </div>
          </div>
 
