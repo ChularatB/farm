@@ -130,35 +130,27 @@ export default function ControlPage() {
 
   const handleCapture = async () => {
     setIsCapturing(true);
-
-    const targetUrl = 'https://farmbrain-bridge-81675649311.asia-southeast1.run.app/update-config';
-    console.log("🛰️ กำลังยิงไปที่:", targetUrl);
+    
     try {
-      const res = await fetch(targetUrl, {
+      // 🛑 ต้องเป็น /api/snap เท่านั้นนะแก! 🛑
+      const res = await fetch('/api/snap', {
         method: 'POST',
-        mode: 'cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          camera_id: "CAM_ECBD8ED6CDC0",
-          action: "snap",
-          device_id: "900C1AB865E4",
-          // camera_id: `CAM_${session?.user?.device_id}`
+          camera_id: session?.user?.device_id || "900C1AB865E4" 
         })
       });
 
       if (res.ok) {
-        // ✅ เปลี่ยนมาระบบเช็คหลายรอบ (Polling) เผื่อ BigQuery เซฟช้า
         let attempts = 0;
         const checkInterval = setInterval(() => {
           attempts++;
-          fetchLatestImage(); // ลองดึงรูปมาดูว่าเปลี่ยนรึยัง
-
-          if (attempts >= 4) { // เช็ค 4 รอบ (รวม 20 วินาที) แล้วค่อยปิดสถานะโหลด
+          fetchLatestImage();
+          if (attempts >= 4) {
             clearInterval(checkInterval);
             setIsCapturing(false);
           }
-        }, 5000); // เช็คทุกๆ 5 วินาที
-
+        }, 5000); 
       } else {
         alert('ส่งคำสั่งถ่ายภาพล้มเหลว');
         setIsCapturing(false);

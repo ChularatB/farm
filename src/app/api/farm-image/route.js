@@ -8,18 +8,14 @@ export const dynamic = 'force-dynamic'; // ยันต์กันจำ Cache
 
 export async function GET() {
   try {
-    // 1. ดึงข้อมูลคนที่ล็อกอินอยู่
     const session = await getServerSession(authOptions);
 
-    if (!session || !session.user?.device_id) {
-      return NextResponse.json({ imageUrl: null, message: "Unauthorized or No Device Linked" }, { status: 401 });
-    }
+    // 🛑 เพื่อการทดสอบให้รูปขึ้น 100% เราจะ FIX ชื่อ camera_id ไปก่อนเลย!
+    // *** แกแก้ตรงนี้ให้ตรงกับ camera_id ที่มีอยู่ในตาราง farm_photos ของแกจริงๆ นะ ***
+    const testCameraId = "CAM_ECBD8ED6CDC0"; // 👈 เปลี่ยนชื่อนี้ให้ตรงกับในฐานข้อมูล
 
-    // 2. เอา device_id มาต่อกับ CAM_ เพื่อให้ตรงกับในฐานข้อมูล
-    const userDeviceId = session.user.device_id;
-    const camera_id = `CAM_${userDeviceId}`;
+    console.log(`🔍 กำลังค้นหารูปของกล้อง: ${testCameraId}`);
 
-    // 🚨 3. เช็คชื่อ Dataset ดีๆ นะ! ของแกน่าจะเป็น smartfarm (ไม่ใช่ smart_farm_data)
     const query = `
       SELECT image_url 
       FROM \`smart-farm-c9d48.smartfarm.farm_photos\` 
@@ -30,13 +26,13 @@ export async function GET() {
     
     const [rows] = await bigquery.query({
       query,
-      params: { cameraId: camera_id } // ส่ง camera_id เข้าไปเช็ค
+      params: { cameraId: testCameraId } // ส่ง testCameraId เข้าไปเช็ค
     });
 
-    console.log("รูปที่หาเจอ:", rows); // เอาไว้ดูใน Terminal ว่ามันหาเจอมั้ย
+    console.log("📸 รูปที่หาเจอ:", rows); // เอาไว้ดูใน Terminal
 
     if (rows && rows.length > 0) {
-      // 4. ใส่ ?t=... เพื่อหลอกเบราว์เซอร์ให้โหลดรูปใหม่เสมอ
+      // ใส่ ?t=... เพื่อหลอกเบราว์เซอร์ให้โหลดรูปใหม่เสมอ (ไม่เอารูปเก่าในแคช)
       const freshImageUrl = `${rows[0].image_url}?t=${new Date().getTime()}`;
       return NextResponse.json({ imageUrl: freshImageUrl });
     } else {
@@ -44,7 +40,7 @@ export async function GET() {
     }
 
   } catch (error) {
-    console.error("BigQuery API Error:", error.message);
+    console.error("🔥 BigQuery API Error:", error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

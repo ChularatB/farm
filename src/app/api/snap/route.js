@@ -3,23 +3,20 @@ import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
-    const { camera_id } = await request.json();
+    const body = await request.json();
+    const cameraId = body.camera_id;
 
-    if (!camera_id) {
+    if (!cameraId) {
       return NextResponse.json({ error: 'Missing camera_id' }, { status: 400 });
     }
 
     const backendUrl = `https://farmbrain-bridge-81675649311.asia-southeast1.run.app/update-config`;
-    
 
-    // ยิงคำสั่งไปหา Backend ของแก
     const res = await fetch(backendUrl, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        device_id: camera_id, 
+        device_id: cameraId, // แปลงร่างเป็น device_id ส่งให้ Cloud Run
         action: "snap"       
       }),
     });
@@ -31,7 +28,7 @@ export async function POST(request) {
     }
 
   } catch (error) {
-    console.error("Snap API Error:", error);
+    console.error("🔥 Snap API Error:", error.message);
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }
