@@ -216,7 +216,7 @@ export default function Dashboard() {
                 <div>
                   <div className="text-sm text-gray-400 font-bold">ความชื้นอากาศ</div>
                   <div className="text-2xl font-bold text-gray-700">
-                     {latest?.humidity ? parseFloat(latest.humidity).toFixed(1) : '--'}%
+                     {latest?.humidity ? parseFloat(latest.humidity).toFixed(1) : '--'}
                   </div>
                 </div>
               </div>
@@ -228,7 +228,7 @@ export default function Dashboard() {
                 <div>
                   <div className="text-sm text-gray-400 font-bold">ความชื้นในดิน</div>
                   <div className="text-2xl font-bold text-gray-700">
-                    {latest?.soil_moisture ? parseInt(latest.soil_moisture) : '--'}%
+                    {latest?.soil_moisture ? parseInt(latest.soil_moisture) : '--'}
                   </div>
                 </div>
               </div>

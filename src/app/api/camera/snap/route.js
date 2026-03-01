@@ -9,8 +9,8 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing camera_id' }, { status: 400 });
     }
 
-    // URL Backend ของแก ชี้ไปที่ /update-config
-    const backendUrl = `https://farm-backend02-81675649311.asia-southeast1.run.app/update-config`;
+    const backendUrl = `https://farmbrain-bridge-81675649311.asia-southeast1.run.app/update-config`;
+    
 
     // ยิงคำสั่งไปหา Backend ของแก
     const res = await fetch(backendUrl, {

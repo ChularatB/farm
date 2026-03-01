@@ -10,7 +10,6 @@ export async function POST(request) {
     const randomChars =  Math.floor(1000 + Math.random() * 9000);
     const user_id = `user-${randomChars}`;
 
-    // ✅ เข้ารหัสผ่านก่อนเซฟลงฐานข้อมูล (ใช้ salt 10 รอบ เพื่อความปลอดภัย)
     const hashedPassword = await hash(password, 10);
 
     const query = `
