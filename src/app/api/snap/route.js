@@ -1,4 +1,4 @@
-// src/app/api/camera/snap/route.js
+// src/app/api/snap/route.js
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {

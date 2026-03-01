@@ -130,12 +130,19 @@ export default function ControlPage() {
 
   const handleCapture = async () => {
     setIsCapturing(true);
+
+    const targetUrl = 'https://farmbrain-bridge-81675649311.asia-southeast1.run.app/update-config';
+    console.log("🛰️ กำลังยิงไปที่:", targetUrl);
     try {
-      const res = await fetch('/api/camera/snap', {
+      const res = await fetch(targetUrl, {
         method: 'POST',
+        mode: 'cors',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          camera_id: `CAM_${session?.user?.device_id}`
+          camera_id: "CAM_ECBD8ED6CDC0",
+          action: "snap",
+          device_id: "900C1AB865E4",
+          // camera_id: `CAM_${session?.user?.device_id}`
         })
       });
 
