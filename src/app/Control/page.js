@@ -132,7 +132,7 @@ export default function ControlPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          device_id: session?.user?.device_id || 'farm_001',
+          device_id: session?.user?.device_id || '900C1AB865E4',
           operation_mode: 0, // สั่งมือแปลว่าต้องเป็น Manual (0)
           pump_command: commandToSend 
         }),
