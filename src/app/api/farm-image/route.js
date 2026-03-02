@@ -10,8 +10,6 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
-    // 🛑 เพื่อการทดสอบให้รูปขึ้น 100% เราจะ FIX ชื่อ camera_id ไปก่อนเลย!
-    // *** แกแก้ตรงนี้ให้ตรงกับ camera_id ที่มีอยู่ในตาราง farm_photos ของแกจริงๆ นะ ***
     const testCameraId = "CAM_ECBD8ED6CDC0"; // 👈 เปลี่ยนชื่อนี้ให้ตรงกับในฐานข้อมูล
 
     console.log(`🔍 กำลังค้นหารูปของกล้อง: ${testCameraId}`);
@@ -32,7 +30,6 @@ export async function GET() {
     console.log("📸 รูปที่หาเจอ:", rows); // เอาไว้ดูใน Terminal
 
     if (rows && rows.length > 0) {
-      // ใส่ ?t=... เพื่อหลอกเบราว์เซอร์ให้โหลดรูปใหม่เสมอ (ไม่เอารูปเก่าในแคช)
       const freshImageUrl = `${rows[0].image_url}?t=${new Date().getTime()}`;
       return NextResponse.json({ imageUrl: freshImageUrl });
     } else {

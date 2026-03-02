@@ -7,16 +7,35 @@ import { useFarmStore } from '../../store/farmStore';
 export default function ManualControl() {
     const { deviceStatus, setDeviceStatus } = useFarmStore();
 
-    // **[สำคัญมาก]** ฟังก์ชันจำลอง: ในโปรเจกต์จริง ต้องเรียก API Route ที่จะส่งคำสั่งไป Pub/Sub
+// ในไฟล์ src/app/components/Control/ManualControl.js
+
     const handleToggle = async (deviceKey) => {
         const newStatus = !deviceStatus[deviceKey];
+        const commandToSend = newStatus ? 0 : 1; 
 
-        // 1. **(TODO: Actual Implementation)** //    Fetch('/api/control', { method: 'POST', body: JSON.stringify({ device: deviceKey, action: newStatus ? 'ON' : 'OFF' }) });
-        
-        // 2. อัปเดต State ทันที (Optimistic Update)
+        // อัปเดต State ทันที
         setDeviceStatus({ [deviceKey]: newStatus });
         
-        alert(`ส่งคำสั่งไปยัง ${deviceKey} ให้: ${newStatus ? 'เปิด' : 'ปิด'}`);
+        try {
+            const res = await fetch('/api/control', { 
+                method: 'POST', 
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    device_id: 'farm_001', 
+                    operation_mode: 0, // บังคับเป็นโหมด Manual (0)
+                    // ตอนนี้ Backend แกรับแค่ pump_command ตัวเดียว ถ้าอนาคตมีปั๊มปุ๋ย แกอาจจะต้องเพิ่มเงื่อนไขส่ง fertilizer_command ไปแทนนะ
+                    pump_command: deviceKey === 'pump_water' ? commandToSend : undefined 
+                }) 
+            });
+
+            if (!res.ok) {
+                setDeviceStatus({ [deviceKey]: !newStatus });
+                alert(`สั่งงาน ${deviceKey} ไม่สำเร็จจ่ะ`);
+            }
+        } catch (error) {
+            setDeviceStatus({ [deviceKey]: !newStatus });
+            alert('การเชื่อมต่อล้มเหลว');
+        }
     };
 
     const devices = [

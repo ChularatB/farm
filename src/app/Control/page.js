@@ -58,7 +58,6 @@ export default function ControlPage() {
 
   const fetchLatestImage = async () => {
     try {
-      // เติม cache: 'no-store' เพื่อให้มันดึงรูปใหม่จริงๆ ไม่ใช้รูปเดิมที่ติดอยู่ในเครื่อง
       const res = await fetch(`/api/farm-image?t=${new Date().getTime()}`, { cache: 'no-store' });
       const json = await res.json();
 
@@ -101,22 +100,42 @@ export default function ControlPage() {
     return () => clearInterval(interval);
   }, [isAuto]);
 
-  const toggleMode = () => {
+  // 1. แก้ฟังก์ชันเปลี่ยนโหมด (Auto/Manual) ให้ส่งค่าไปบอก Backend ด้วย
+  const toggleMode = async () => {
     const newMode = !isAuto;
     setIsAuto(newMode);
     localStorage.setItem('farm_control_mode', newMode ? 'auto' : 'manual');
+    
+    // แจ้ง Backend ว่าตอนนี้อยู่โหมดไหน (1 = Auto, 0 = Manual)
+    try {
+      await fetch('/api/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          device_id: session?.user?.device_id || 'farm_001',
+          operation_mode: newMode ? 1 : 0 
+        }),
+      });
+    } catch(err) { console.error("Error updating mode:", err); }
   };
 
+
+  // 2. แก้ฟังก์ชันสั่งปั๊มน้ำ ให้ส่งค่า pump_command
   const toggleIrrigation = async () => {
     if (isAuto) return;
     const newState = !isIrrigationOn;
-    const commandToSend = newState ? 0 : 1;
+    const commandToSend = newState ? 0 : 1; 
     setIsIrrigationOn(newState);
+    
     try {
       const res = await fetch('/api/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ command: commandToSend }),
+        body: JSON.stringify({ 
+          device_id: session?.user?.device_id || 'farm_001',
+          operation_mode: 0, // สั่งมือแปลว่าต้องเป็น Manual (0)
+          pump_command: commandToSend 
+        }),
       });
       if (!res.ok) {
         setIsIrrigationOn(!newState);
@@ -127,13 +146,12 @@ export default function ControlPage() {
       alert('Error: การเชื่อมต่อล้มเหลว');
     }
   };
-
   const handleCapture = async () => {
     setIsCapturing(true);
     
     try {
       // 🛑 ต้องเป็น /api/snap เท่านั้นนะแก! 🛑
-      const res = await fetch('/api/snap', {
+      const res = await fetch('/api/camera/snap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -178,7 +196,7 @@ export default function ControlPage() {
                 <Loader2 className="animate-spin text-primary-medium" />
               </div>
             ) : farmImage ? (
-              <img src={farmImage} alt="Latest Farm" className="w-full h-full object-cover rounded-[32px]" />
+              <img key={farmImage} src={farmImage} alt="Latest Farm" className="w-full h-full object-cover rounded-[32px]" />
             ) : (
               <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 rounded-[32px] text-gray-400">
                 <ImageIcon size={48} className="mb-2 opacity-20" />
