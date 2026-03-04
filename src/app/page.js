@@ -278,12 +278,12 @@ export default function Dashboard() {
                 <div className="bg-white p-3 rounded-2xl shadow-sm border border-blue-100 text-center">
                   <CloudRain size={20} className="mx-auto text-blue-500 mb-1" />
                   <p className="text-[10px] text-gray-400 uppercase font-bold">ชื้นอากาศเฉลี่ย</p>
-                  <p className="text-lg font-bold text-blue-600">{summary.avgHumid}%</p>
+                  <p className="text-lg font-bold text-blue-600">{summary.avgHumid}</p>
                 </div>
                 <div className="bg-white p-3 rounded-2xl shadow-sm border border-green-100 text-center">
                   <Droplets size={20} className="mx-auto text-green-500 mb-1" />
-                  <p className="text-[10px] text-gray-400 uppercase font-bold">ชื้นดินเฉลี่ย</p>
-                  <p className="text-lg font-bold text-green-600">{summary.avgSoil}%</p>
+                  <p className="text-[10px] text-gray-400 uppercase font-bold">ความชื้นดินเฉลี่ย</p>
+                  <p className="text-lg font-bold text-green-600">{summary.avgSoil}</p>
                 </div>
               </div>
 
