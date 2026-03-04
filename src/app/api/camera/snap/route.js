@@ -1,34 +1,37 @@
-// src/app/api/snap/route.js
 import { NextResponse } from 'next/server';
 
 export async function POST(request) {
   try {
     const body = await request.json();
-    const cameraId = body.camera_id;
+    console.log("📨 API /snap ได้รับข้อมูลจากหน้าเว็บ:", body); // ดูว่าหน้าเว็บส่งอะไรมา
 
-    if (!cameraId) {
-      return NextResponse.json({ error: 'Missing camera_id' }, { status: 400 });
-    }
+    // บังคับใช้ชื่อกล้องให้ถูกต้องเสมอ ป้องกันปัญหา
+    const cameraId = body.camera_id || "CAM_ECBD8ED6CDC0"; 
 
     const backendUrl = `https://farmbrain-bridge-81675649311.asia-southeast1.run.app/update-config`;
+    console.log(`🚀 กำลังเตรียมยิงไป Cloud Run ด้วย camera_id: ${cameraId}`);
 
     const res = await fetch(backendUrl, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        device_id: cameraId, // แปลงร่างเป็น device_id ส่งให้ Cloud Run
-        action: "snap"       
+        camera_id: cameraId, 
+        action: "snap"        
       }),
     });
+
+    console.log(`☁️ Cloud Run ตอบกลับมาว่า: Status ${res.status}`); // ดูว่า Cloud Run รับของไหม
 
     if (res.ok) {
       return NextResponse.json({ success: true, message: 'Snap triggered' });
     } else {
-      return NextResponse.json({ error: 'Backend failed to process' }, { status: res.status });
+      const errText = await res.text();
+      console.error(`❌ Cloud Run Error:`, errText);
+      return NextResponse.json({ error: 'Backend failed' }, { status: res.status });
     }
 
   } catch (error) {
-    console.error("🔥 Snap API Error:", error.message);
+    console.error("🔥 Snap API พังยับ:", error);
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }

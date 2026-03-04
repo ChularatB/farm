@@ -10,7 +10,7 @@ export async function GET() {
   try {
     const session = await getServerSession(authOptions);
 
-    const testCameraId = "CAM_ECBD8ED6CDC0"; // 👈 เปลี่ยนชื่อนี้ให้ตรงกับในฐานข้อมูล
+    const testCameraId = "CAM_ECBD8ED6CDC0";
 
     console.log(`🔍 กำลังค้นหารูปของกล้อง: ${testCameraId}`);
 

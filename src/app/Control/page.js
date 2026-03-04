@@ -62,9 +62,9 @@ export default function ControlPage() {
       const json = await res.json();
 
       if (json.imageUrl) {
-        setFarmImage(json.imageUrl); // โชว์รูป
+        setFarmImage(json.imageUrl);
       } else {
-        setFarmImage(null); // ✅ ถ้าไม่ตรง / ไม่มีรูป ให้โชว์คำว่า "ยังไม่มีรูปภาพ"
+        setFarmImage(null);
       }
     } catch (err) {
       console.error(err);
@@ -112,7 +112,7 @@ export default function ControlPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          device_id: session?.user?.device_id || 'farm_001',
+          device_id: session?.user?.device_id || '900C1AB865E4',
           operation_mode: newMode ? 1 : 0 
         }),
       });
@@ -146,16 +146,16 @@ export default function ControlPage() {
       alert('Error: การเชื่อมต่อล้มเหลว');
     }
   };
+
   const handleCapture = async () => {
     setIsCapturing(true);
     
     try {
-      // 🛑 ต้องเป็น /api/snap เท่านั้นนะแก! 🛑
       const res = await fetch('/api/camera/snap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          camera_id: session?.user?.device_id || "900C1AB865E4" 
+          camera_id: session?.user?.camera_id || "CAM_ECBD8ED6CDC0" 
         })
       });
 
