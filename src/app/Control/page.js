@@ -1,7 +1,6 @@
-// src/app/Control/page.js
 "use client";
 import { useState, useEffect } from 'react';
-import { Droplets, Settings, Loader2, Lightbulb, Sprout, Image as ImageIcon, Camera } from 'lucide-react'; // ✅ เพิ่ม Icon Camera
+import { Droplets, Settings, Loader2, Lightbulb, Sprout, Image as ImageIcon, Camera } from 'lucide-react'; 
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
@@ -14,14 +13,14 @@ export default function ControlPage() {
   const [isAuto, setIsAuto] = useState(true);
   const [loading, setLoading] = useState(true);
 
+  // สถานะอุปกรณ์
   const [isIrrigationOn, setIsIrrigationOn] = useState(false);
   const [isLightOn, setIsLightOn] = useState(false);
   const [isFertilizerOn, setIsFertilizerOn] = useState(false);
 
+  // สถานะกล้อง
   const [farmImage, setFarmImage] = useState(null);
   const [imgLoading, setImgLoading] = useState(true);
-
-  // ✅ State สำหรับปุ่มถ่ายภาพ
   const [isCapturing, setIsCapturing] = useState(false);
 
   const [config, setConfig] = useState({
@@ -39,6 +38,7 @@ export default function ControlPage() {
     setIsAuto(savedMode !== 'manual');
   }, []);
 
+  // ดึงการตั้งค่าว่าเปิดใช้อะไรบ้าง
   useEffect(() => {
     if (session?.user?.user_id) {
       fetch('/api/farm/info')
@@ -56,16 +56,13 @@ export default function ControlPage() {
     }
   }, [session]);
 
+  // โหลดรูปล่าสุด
   const fetchLatestImage = async () => {
     try {
       const res = await fetch(`/api/farm-image?t=${new Date().getTime()}`, { cache: 'no-store' });
       const json = await res.json();
-
-      if (json.imageUrl) {
-        setFarmImage(json.imageUrl);
-      } else {
-        setFarmImage(null);
-      }
+      if (json.imageUrl) setFarmImage(json.imageUrl);
+      else setFarmImage(null);
     } catch (err) {
       console.error(err);
     } finally {
@@ -79,12 +76,18 @@ export default function ControlPage() {
     return () => clearInterval(interval);
   }, []);
 
+  // ดึงสถานะเซนเซอร์ (ว่าปั๊ม/ไฟ/ปุ๋ย เปิดหรือปิดอยู่)
   const fetchStatus = async () => {
     try {
       const res = await fetch('/api/sensors');
       const json = await res.json();
       if (json.data && json.data.length > 0) {
+        // สมมติฐาน: Relay เป็น Active Low (0 = เปิด, 1 = ปิด)
         setIsIrrigationOn(json.data[0].pump_status === 0);
+        
+        // 🛑 เพิ่มการดึงสถานะไฟและปุ๋ย (ถ้า Backend แกส่งกลับมาด้วยนะ)
+        if (json.data[0].light_status !== undefined) setIsLightOn(json.data[0].light_status === 0);
+        if (json.data[0].fertilizer_status !== undefined) setIsFertilizerOn(json.data[0].fertilizer_status === 0);
       }
     } catch (error) {
       console.error("Error fetching status:", error);
@@ -100,13 +103,19 @@ export default function ControlPage() {
     return () => clearInterval(interval);
   }, [isAuto]);
 
-  // 1. แก้ฟังก์ชันเปลี่ยนโหมด (Auto/Manual) ให้ส่งค่าไปบอก Backend ด้วย
+  // 🛑 สลับโหมด Auto/Manual (ตัดระบบเซฟตี้)
   const toggleMode = async () => {
     const newMode = !isAuto;
     setIsAuto(newMode);
     localStorage.setItem('farm_control_mode', newMode ? 'auto' : 'manual');
     
-    // แจ้ง Backend ว่าตอนนี้อยู่โหมดไหน (1 = Auto, 0 = Manual)
+    // 🛡️ [Safety Cut-off] ถ้าเปลี่ยนเป็น Manual ให้หน้าจอเด้งกลับเป็นสถานะ "ปิด" ให้หมดทันที!
+    if (!newMode) {
+      setIsIrrigationOn(false);
+      setIsLightOn(false);
+      setIsFertilizerOn(false);
+    }
+    
     try {
       await fetch('/api/control', {
         method: 'POST',
@@ -119,8 +128,7 @@ export default function ControlPage() {
     } catch(err) { console.error("Error updating mode:", err); }
   };
 
-
-  // 2. แก้ฟังก์ชันสั่งปั๊มน้ำ ให้ส่งค่า pump_command
+  // 💧 สั่งน้ำ
   const toggleIrrigation = async () => {
     if (isAuto) return;
     const newState = !isIrrigationOn;
@@ -133,30 +141,64 @@ export default function ControlPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           device_id: session?.user?.device_id || '900C1AB865E4',
-          operation_mode: 0, // สั่งมือแปลว่าต้องเป็น Manual (0)
+          operation_mode: 0, 
           pump_command: commandToSend 
         }),
       });
-      if (!res.ok) {
-        setIsIrrigationOn(!newState);
-        alert('สั่งงานไม่สำเร็จ');
-      }
-    } catch (error) {
-      setIsIrrigationOn(!newState);
-      alert('Error: การเชื่อมต่อล้มเหลว');
-    }
+      if (!res.ok) { setIsIrrigationOn(!newState); alert('สั่งงานน้ำไม่สำเร็จ'); }
+    } catch (error) { setIsIrrigationOn(!newState); alert('Error: การเชื่อมต่อล้มเหลว'); }
   };
 
-  const handleCapture = async () => {
-    setIsCapturing(true);
+  // 💡 สั่งไฟ
+  const toggleLight = async () => {
+    if (isAuto) return;
+    const newState = !isLightOn;
+    const commandToSend = newState ? 0 : 1; // 0 = เปิด, 1 = ปิด (Active Low)
+    setIsLightOn(newState);
     
     try {
-      const res = await fetch('/api/camera/snap', {
+      const res = await fetch('/api/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          camera_id: session?.user?.camera_id || "CAM_ECBD8ED6CDC0" 
-        })
+        body: JSON.stringify({ 
+          device_id: session?.user?.device_id || '900C1AB865E4',
+          operation_mode: 0, 
+          light_command: commandToSend 
+        }),
+      });
+      if (!res.ok) { setIsLightOn(!newState); alert('สั่งงานไฟไม่สำเร็จ'); }
+    } catch (error) { setIsLightOn(!newState); alert('Error: การเชื่อมต่อล้มเหลว'); }
+  };
+
+  // 🌱 สั่งปุ๋ย
+  const toggleFertilizer = async () => {
+    if (isAuto) return;
+    const newState = !isFertilizerOn;
+    const commandToSend = newState ? 0 : 1; // 0 = เปิด, 1 = ปิด (Active Low)
+    setIsFertilizerOn(newState);
+    
+    try {
+      const res = await fetch('/api/control', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          device_id: session?.user?.device_id || '900C1AB865E4',
+          operation_mode: 0, 
+          fertilizer_command: commandToSend 
+        }),
+      });
+      if (!res.ok) { setIsFertilizerOn(!newState); alert('สั่งงานปุ๋ยไม่สำเร็จ'); }
+    } catch (error) { setIsFertilizerOn(!newState); alert('Error: การเชื่อมต่อล้มเหลว'); }
+  };
+
+  // 📸 สั่งถ่ายรูป
+  const handleCapture = async () => {
+    setIsCapturing(true);
+    try {
+      const res = await fetch('/api/snap', { // 🛑 ใช้ /api/snap หรือ /api/camera/snap ตามที่แกตั้งไว้นะ
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ camera_id: session?.user?.camera_id || "CAM_ECBD8ED6CDC0" })
       });
 
       if (res.ok) {
@@ -164,7 +206,7 @@ export default function ControlPage() {
         const checkInterval = setInterval(() => {
           attempts++;
           fetchLatestImage();
-          if (attempts >= 4) {
+          if (attempts >= 10) {
             clearInterval(checkInterval);
             setIsCapturing(false);
           }
@@ -174,7 +216,6 @@ export default function ControlPage() {
         setIsCapturing(false);
       }
     } catch (error) {
-      console.error(error);
       alert('เกิดข้อผิดพลาดในการเชื่อมต่อ');
       setIsCapturing(false);
     }
@@ -208,21 +249,12 @@ export default function ControlPage() {
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> LATEST UPDATE
             </div>
 
-            {/* ✅ ปุ่มกดถ่ายภาพ (Snap) มุมขวาบน */}
             <div className="absolute top-4 right-4">
-              <button
-                onClick={handleCapture}
-                disabled={isCapturing}
-                className={clsx(
-                  "bg-white/90 backdrop-blur-sm p-3 rounded-full text-primary-dark shadow-lg transition-all active:scale-95",
-                  isCapturing ? "opacity-70 cursor-wait" : "hover:bg-primary-medium hover:text-white"
-                )}
-              >
+              <button onClick={handleCapture} disabled={isCapturing} className={clsx("bg-white/90 backdrop-blur-sm p-3 rounded-full text-primary-dark shadow-lg transition-all active:scale-95", isCapturing ? "opacity-70 cursor-wait" : "hover:bg-primary-medium hover:text-white")}>
                 {isCapturing ? <Loader2 size={20} className="animate-spin text-primary-medium" /> : <Camera size={20} />}
               </button>
             </div>
 
-            {/* โชว์แถบแจ้งเตือนตอนกำลังถ่าย */}
             {isCapturing && (
               <div className="absolute bottom-5 left-1/2 -translate-x-1/2 bg-black/60 backdrop-blur-md text-white text-xs px-4 py-2 rounded-full flex items-center gap-2 animate-pulse">
                 กำลังสั่งถ่ายภาพ รอสักครู่... 📸
@@ -230,7 +262,7 @@ export default function ControlPage() {
             )}
           </div>
 
-          {/* ... (โค้ดส่วน แผงควบคุมหลัก เหมือนเดิมเป๊ะๆ) ... */}
+          {/* แผงควบคุมหลัก */}
           <div className="bg-white rounded-3xl p-5 shadow-lg border border-secondary-light mt-4">
             <div className="flex justify-between items-center mb-4">
               <h3 className="font-bold text-primary-dark">แผงควบคุมหลัก</h3>
@@ -260,7 +292,7 @@ export default function ControlPage() {
                     <h4 className="font-bold text-yellow-800 text-sm">ระบบแสงสว่าง</h4>
                     <p className="text-xs text-yellow-600/80">{isLightOn ? 'เปิดไฟอยู่ 💡' : 'ปิดไฟ'}</p>
                   </div>
-                  <button onClick={() => !isAuto && setIsLightOn(!isLightOn)} disabled={isAuto} className={clsx("w-20 py-2 rounded-xl text-xs font-bold transition-all", isLightOn ? "bg-yellow-500 text-white shadow-md" : "bg-white text-yellow-600 border border-yellow-200", isAuto && "opacity-50 cursor-not-allowed")}>
+                  <button onClick={toggleLight} disabled={isAuto} className={clsx("w-20 py-2 rounded-xl text-xs font-bold transition-all", isLightOn ? "bg-yellow-500 text-white shadow-md" : "bg-white text-yellow-600 border border-yellow-200", isAuto && "opacity-50 cursor-not-allowed")}>
                     {isLightOn ? 'ปิด' : 'เปิด'}
                   </button>
                 </div>
@@ -273,7 +305,7 @@ export default function ControlPage() {
                     <h4 className="font-bold text-green-800 text-sm">ระบบปุ๋ย</h4>
                     <p className="text-xs text-green-600/80">{isFertilizerOn ? 'กำลังจ่ายปุ๋ย 🌱' : 'ปิดการทำงาน'}</p>
                   </div>
-                  <button onClick={() => !isAuto && setIsFertilizerOn(!isFertilizerOn)} disabled={isAuto} className={clsx("w-20 py-2 rounded-xl text-xs font-bold transition-all", isFertilizerOn ? "bg-green-600 text-white shadow-md" : "bg-white text-green-600 border border-green-200", isAuto && "opacity-50 cursor-not-allowed")}>
+                  <button onClick={toggleFertilizer} disabled={isAuto} className={clsx("w-20 py-2 rounded-xl text-xs font-bold transition-all", isFertilizerOn ? "bg-green-600 text-white shadow-md" : "bg-white text-green-600 border border-green-200", isAuto && "opacity-50 cursor-not-allowed")}>
                     {isFertilizerOn ? 'หยุด' : 'เริ่ม'}
                   </button>
                 </div>

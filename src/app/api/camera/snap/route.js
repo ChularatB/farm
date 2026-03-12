@@ -3,12 +3,13 @@ import { NextResponse } from 'next/server';
 export async function POST(request) {
   try {
     const body = await request.json();
-    console.log("📨 API /snap ได้รับข้อมูลจากหน้าเว็บ:", body); // ดูว่าหน้าเว็บส่งอะไรมา
+    console.log("📨 API /snap ได้รับข้อมูลจากหน้าเว็บ:", body);
 
-    // บังคับใช้ชื่อกล้องให้ถูกต้องเสมอ ป้องกันปัญหา
     const cameraId = body.camera_id || "CAM_ECBD8ED6CDC0"; 
-
+    
+    // 🛑 กลับมายิงเข้า Cloud Run ให้ไปอัปเดต DB
     const backendUrl = `https://farmbrain-bridge-81675649311.asia-southeast1.run.app/update-config`;
+    
     console.log(`🚀 กำลังเตรียมยิงไป Cloud Run ด้วย camera_id: ${cameraId}`);
 
     const res = await fetch(backendUrl, {
@@ -20,10 +21,10 @@ export async function POST(request) {
       }),
     });
 
-    console.log(`☁️ Cloud Run ตอบกลับมาว่า: Status ${res.status}`); // ดูว่า Cloud Run รับของไหม
+    console.log(`☁️ Cloud Run ตอบกลับมาว่า: Status ${res.status}`);
 
     if (res.ok) {
-      return NextResponse.json({ success: true, message: 'Snap triggered' });
+      return NextResponse.json({ success: true, message: 'Snap triggered in DB' });
     } else {
       const errText = await res.text();
       console.error(`❌ Cloud Run Error:`, errText);
@@ -31,7 +32,7 @@ export async function POST(request) {
     }
 
   } catch (error) {
-    console.error("🔥 Snap API พังยับ:", error);
+    console.error("🔥 Snap API พัง:", error);
     return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }

@@ -1,37 +1,53 @@
-// src/app/api/control/route.js
+// ไฟล์: src/app/api/control/route.js
 import { NextResponse } from 'next/server';
-
-// 🛑 เปลี่ยนเป็น 127.0.0.1 จะชัวร์กว่า localhost ในหลายๆ เครื่องจ่ะ
-const BACKEND_URL = 'https://farmbrain-bridge-81675649311.asia-southeast1.run.app';
+import { getServerSession } from "next-auth";
 
 export async function POST(request) {
   try {
-    const body = await request.json();
-    console.log("📡 [Next.js API] กำลังส่งคำสั่งไป Backend:", body);
-
-    const res = await fetch(`${BACKEND_URL}/update-config`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      cache: 'no-store' // ไม่ให้จำค่าเก่า
-    });
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("❌ Backend ตอบกลับ Error:", res.status, errText);
-      // ส่ง status กลับไปให้หน้าเว็บรู้ว่าพังที่ Backend
-      return NextResponse.json({ error: `Backend พัง: ${res.status} ${errText}` }, { status: res.status });
+    const session = await getServerSession();
+    if (!session) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const data = await res.json();
-    return NextResponse.json({ success: true, message: 'สั่งงานเรียบร้อย', data });
+    const body = await request.json();
+    console.log("📨 API /control ได้รับข้อมูลจากหน้าเว็บ:", body);
+
+    const deviceId = body.device_id || session.user?.device_id || "900C1AB865E4"; 
+    
+    // 🛑 รับค่ามาทุกอย่าง ทั้งโหมด, ปั๊มน้ำ, ไฟ, และปุ๋ย
+    const opMode = body.operation_mode;
+    const pumpCmd = body.pump_command;
+    const lightCmd = body.light_command;
+    const fertCmd = body.fertilizer_command;
+    
+    const backendUrl = `https://farmbrain-bridge-81675649311.asia-southeast1.run.app/update-config`;
+
+    // 🛑 เตรียมแพ็คของ (ถ้าหน้าเว็บไม่ได้กดปุ่มไฟ มันก็จะไม่ส่งค่าไฟไปกวน Cloud Run)
+    const payload = { device_id: deviceId };
+    if (opMode !== undefined) payload.operation_mode = opMode;
+    if (pumpCmd !== undefined) payload.pump_command = pumpCmd;
+    if (lightCmd !== undefined) payload.light_command = lightCmd;
+    if (fertCmd !== undefined) payload.fertilizer_command = fertCmd;
+
+    console.log(`🚀 กำลังยิง Payload ไป Cloud Run:`, payload);
+
+    const res = await fetch(backendUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return NextResponse.json({ success: true, message: 'Command sent to backend', backend_response: data });
+    } else {
+      const errText = await res.text();
+      console.error(`❌ Cloud Run Error:`, errText);
+      return NextResponse.json({ error: 'Backend failed' }, { status: res.status });
+    }
 
   } catch (error) {
-    console.error('🔥 API Control Error (เชื่อมต่อไม่ติด):', error.message);
-    // ถ้าพังตรงนี้แปลว่าหาเซิร์ฟเวอร์ Backend ไม่เจอ
-    return NextResponse.json({ 
-      error: 'เชื่อมต่อ Express Backend ไม่ได้ (เซิร์ฟเวอร์ปิดอยู่ หรือตั้ง URL ผิด)',
-      details: error.message 
-    }, { status: 500 });
+    console.error("🔥 Control API พัง:", error);
+    return NextResponse.json({ error: 'Server Error' }, { status: 500 });
   }
 }
