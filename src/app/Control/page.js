@@ -195,7 +195,7 @@ export default function ControlPage() {
   const handleCapture = async () => {
     setIsCapturing(true);
     try {
-      const res = await fetch('/api/snap', { // 🛑 ใช้ /api/snap หรือ /api/camera/snap ตามที่แกตั้งไว้นะ
+      const res = await fetch('/api/camera/snap', { 
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ camera_id: session?.user?.camera_id || "CAM_ECBD8ED6CDC0" })

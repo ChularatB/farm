@@ -121,12 +121,42 @@ export default function Dashboard() {
     }
   }, [status, activeTab, activeFilter]);
 
-  // ✅ จัดรูปแบบเวลาใหม่ ให้มี วันที่ และ เดือน 
-  const formatTime = (timestamp) => {
-    if (!timestamp) return "";
-    const date = new Date(timestamp);
-    // จะได้หน้าตาแบบ "28 ก.พ. 14:30" 
-    return date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+// 🛑 ฟังก์ชันจัดการเวลาที่ส่งมาจาก BigQuery (ฉบับแสดง วันที่ เดือน และเวลา)
+  const formatTime = (timestampString) => {
+    if (!timestampString) return "-";
+    
+    try {
+      let dateString = timestampString;
+
+      if (typeof timestampString === 'string') {
+        // 1. หั่นคำว่า UTC หรือ Z ออก
+        dateString = dateString.replace(/UTC/gi, '').replace(/Z/gi, '').trim();
+        // 2. แทนที่ ' ' ด้วย 'T' ให้ถูกต้องตามฟอร์แมตของ JS
+        dateString = dateString.replace(' ', 'T');
+        // 3. ระบุ +07:00 บังคับให้เป็นเวลาไทย (ป้องกันการบวกเวลาเบิ้ล)
+        if (!dateString.includes('+')) {
+          dateString += '+07:00';
+        }
+      }
+
+      const date = new Date(dateString);
+
+      if (isNaN(date.getTime())) {
+        return "--/--/-- --:--"; 
+      }
+
+      // 🛑 สั่งให้แสดง "วันที่ เดือนย่อ ชั่วโมง:นาที" 
+      // ผลลัพธ์ที่ได้จะเป็นประมาณ "9 ธ.ค. 21:08"
+      return date.toLocaleDateString('th-TH', { 
+        day: 'numeric',
+        month: 'short',
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+      
+    } catch (error) {
+      return "--/--/-- --:--";
+    }
   };
 
   if (status === 'loading') {
