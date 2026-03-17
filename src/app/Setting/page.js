@@ -1,7 +1,7 @@
 // src/app/Setting/page.js
 "use client";
 import { useState, useEffect } from 'react';
-import { Droplets, Lightbulb, Sprout, MapPin, Loader2, Save, Clock, Calendar, Cpu } from 'lucide-react';
+import { Droplets, Lightbulb, Sprout, MapPin, Loader2, Save, Clock, Calendar, Cpu, MessageCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -27,6 +27,9 @@ export default function SettingsPage() {
   const [useFertilizer, setUseFertilizer] = useState(false);
   const [farmSize, setFarmSize] = useState('');
   const [totalDevices, setTotalDevices] = useState('');
+  
+  // 🛑 เพิ่ม State สำหรับเก็บ LINE User ID
+  const [lineUserId, setLineUserId] = useState('');
 
   // State ตั้งเวลา
   const [lightStart, setLightStart] = useState('18:00'); 
@@ -51,10 +54,11 @@ export default function SettingsPage() {
             setFarmSize(data.farm_size || '');
             setTotalDevices(data.total_devices || '');
             
-            // ดึงค่าเวลา
+            // ดึงค่าเวลา และ LINE ID (ถ้ามี)
             setLightStart(data.light_start_time || '18:00');
             setLightDuration(data.light_duration?.toString() || '4');
             setFertilizerDays(data.fertilizer_interval?.toString() || '30');
+            setLineUserId(data.line_user_id || ''); // 🛑 รับค่า LINE ID จาก API
           }
         })
         .catch(err => console.error(err));
@@ -73,10 +77,10 @@ export default function SettingsPage() {
           use_irrigation: useIrrigation,
           use_light: useLight,
           use_fertilizer: useFertilizer,
-          // ส่งค่าเวลา
           light_start_time: lightStart,
           light_duration: parseInt(lightDuration),
-          fertilizer_interval: parseInt(fertilizerDays)
+          fertilizer_interval: parseInt(fertilizerDays),
+          line_user_id: lineUserId // 🛑 ส่งค่า LINE ID ไปเซฟด้วย!
         })
       });
       if (res.ok) alert("บันทึกการตั้งค่าเรียบร้อย!");
@@ -151,6 +155,28 @@ export default function SettingsPage() {
             <span className="text-sm text-gray-500">ชิ้น</span>
           </div>
         </div>
+        
+        {/* 🛑 เพิ่มกล่องสำหรับกรอก LINE User ID ตรงนี้เลย! */}
+        <div>
+          <h2 className="text-sm text-gray-500 mb-2 ml-2 flex items-center gap-1">
+            รับการแจ้งเตือนผ่าน LINE
+          </h2>
+          <div className="bg-green-50 border border-green-200 rounded-3xl p-5 shadow-sm">
+            <div className="flex items-center gap-3 mb-2">
+              <div className="bg-green-100 p-2 rounded-full text-green-600"><MessageCircle size={18} /></div>
+              <h3 className="font-bold text-green-800">LINE User ID</h3>
+            </div>
+            <p className="text-xs text-green-600/80 mb-3 ml-1">กรอก User ID เพื่อรับแจ้งเตือนเมื่อดินแห้ง, อากาศร้อน หรือมีรูปล่าสุดจากฟาร์ม</p>
+            <input 
+              type="text" 
+              placeholder="เช่น Ubfc450..." 
+              value={lineUserId} 
+              onChange={(e) => setLineUserId(e.target.value)} 
+              className="w-full bg-white rounded-xl p-3 font-medium text-gray-700 outline-none border border-green-200 focus:border-green-500 shadow-inner" 
+            />
+          </div>
+        </div>
+
       </div>
 
       <button onClick={handleSave} disabled={saving} className="w-full py-4 bg-primary-dark text-white font-bold rounded-3xl shadow-lg mt-4 flex justify-center items-center gap-2 hover:bg-opacity-90 transition-all">

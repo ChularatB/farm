@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { CloudRain, Droplets, Sun, Thermometer, Wind, Loader2, TrendingUp } from 'lucide-react';
+import { CloudRain, Droplets, Sun, Thermometer, Wind, Loader2, TrendingUp, AlertTriangle, X } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 
 export default function Dashboard() {
@@ -14,11 +14,13 @@ export default function Dashboard() {
   const [latest, setLatest] = useState(null);
   const [loadingData, setLoadingData] = useState(true);
 
-  // ✅ ค่าเริ่มต้นให้ดึง ALL จะได้เห็นข้อมูลเก่าทันที
   const [activeFilter, setActiveFilter] = useState('ALL');
   const [historyData, setHistoryData] = useState([]);
   const [summary, setSummary] = useState({ avgTemp: 0, avgHumid: 0, avgSoil: 0 });
   const [loadingHistory, setLoadingHistory] = useState(false);
+
+  // 🛑 State สำหรับเก็บข้อความแจ้งเตือนหน้าเว็บ
+  const [webAlert, setWebAlert] = useState(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -26,12 +28,22 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/sensors?range=ALL'); // หน้าแรกก็ให้ดึงข้อมูลล่าสุดที่มี
+      const res = await fetch('/api/sensors?range=ALL'); 
       const json = await res.json();
 
       if (json.data && json.data.length > 0) {
         const reversedData = [...json.data].reverse();
-        setLatest(reversedData[reversedData.length - 1]);
+        const currentData = reversedData[reversedData.length - 1];
+        setLatest(currentData);
+
+        // 🚨 ระบบเช็คเงื่อนไขแจ้งเตือนบนเว็บ (อิงจากค่าล่าสุด)
+        if (currentData.temperature > 35) {
+            setWebAlert({ type: 'temp', msg: `🔥 ระวัง! อุณหภูมิร้อนจัด: ${currentData.temperature}°C` });
+        } else if (currentData.soil_moisture < 40) { // แกปรับตัวเลข 40 ให้ตรงกับเซนเซอร์แกได้นะ
+            setWebAlert({ type: 'soil', msg: `🏜️ ดินแห้งเกินไป! ความชื้นเหลือ: ${currentData.soil_moisture}` });
+        } else {
+            setWebAlert(null); // ถ้าปกติก็ซ่อนป้ายเตือน
+        }
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -47,7 +59,6 @@ export default function Dashboard() {
       const json = await res.json();
 
       if (json.data && json.data.length > 0) {
-        // หาค่าเฉลี่ยภาพรวม
         const avgT = json.data.reduce((acc, curr) => acc + (curr.temperature || 0), 0) / json.data.length;
         const avgH = json.data.reduce((acc, curr) => acc + (curr.humidity || 0), 0) / json.data.length;
         const avgS = json.data.reduce((acc, curr) => acc + (curr.soil_moisture || 0), 0) / json.data.length;
@@ -58,14 +69,12 @@ export default function Dashboard() {
           avgSoil: avgS.toFixed(1)
         });
 
-        // 🧠 ระบบ AI บดข้อมูล (Grouping Data) 🧠
         const groupedMap = new Map();
 
         json.data.reverse().forEach(item => {
           const date = new Date(item.timestamp);
           let timeLabel = '';
 
-          // ✅ จัดชื่อแกน X ตามที่แกขอเป๊ะๆ!
           if (activeFilter === '1H') {
             timeLabel = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
           } else if (activeFilter === '24H') {
@@ -79,7 +88,6 @@ export default function Dashboard() {
             timeLabel = date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
           }
 
-          // จับยัดเข้ากลุ่มและบวกค่าสะสมไว้หาค่าเฉลี่ย
           if (!groupedMap.has(timeLabel)) {
             groupedMap.set(timeLabel, { name: timeLabel, tempSum: 0, humidSum: 0, soilSum: 0, count: 0 });
           }
@@ -90,7 +98,6 @@ export default function Dashboard() {
           group.count += 1;
         });
 
-        // แปลงผลลัพธ์ที่จัดกลุ่มแล้วออกมาใช้โชว์กราฟ
         const formatted = Array.from(groupedMap.values()).map(group => ({
           name: group.name,
           temp: Number((group.tempSum / group.count).toFixed(1)),
@@ -121,39 +128,22 @@ export default function Dashboard() {
     }
   }, [status, activeTab, activeFilter]);
 
-// 🛑 ฟังก์ชันจัดการเวลาที่ส่งมาจาก BigQuery (ฉบับแสดง วันที่ เดือน และเวลา)
   const formatTime = (timestampString) => {
     if (!timestampString) return "-";
-    
     try {
       let dateString = timestampString;
-
       if (typeof timestampString === 'string') {
-        // 1. หั่นคำว่า UTC หรือ Z ออก
         dateString = dateString.replace(/UTC/gi, '').replace(/Z/gi, '').trim();
-        // 2. แทนที่ ' ' ด้วย 'T' ให้ถูกต้องตามฟอร์แมตของ JS
         dateString = dateString.replace(' ', 'T');
-        // 3. ระบุ +07:00 บังคับให้เป็นเวลาไทย (ป้องกันการบวกเวลาเบิ้ล)
         if (!dateString.includes('+')) {
           dateString += '+07:00';
         }
       }
-
       const date = new Date(dateString);
-
-      if (isNaN(date.getTime())) {
-        return "--/--/-- --:--"; 
-      }
-
-      // 🛑 สั่งให้แสดง "วันที่ เดือนย่อ ชั่วโมง:นาที" 
-      // ผลลัพธ์ที่ได้จะเป็นประมาณ "9 ธ.ค. 21:08"
+      if (isNaN(date.getTime())) return "--/--/-- --:--"; 
       return date.toLocaleDateString('th-TH', { 
-        day: 'numeric',
-        month: 'short',
-        hour: '2-digit', 
-        minute: '2-digit' 
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
       });
-      
     } catch (error) {
       return "--/--/-- --:--";
     }
@@ -170,7 +160,22 @@ export default function Dashboard() {
   if (status === 'unauthenticated') return null;
 
   return (
-    <div className="h-screen bg-background-light font-mitr pb-24 px-6 pt-8 overflow-y-auto">
+    <div className="h-screen bg-background-light font-mitr pb-24 px-6 pt-8 overflow-y-auto relative">
+
+      {/* 🚨 Popup แจ้งเตือนลอยบนสุดของหน้าจอ 🚨 */}
+      {webAlert && (
+        <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-50 animate-in fade-in slide-in-from-top-10 duration-500">
+            <div className={`flex items-center justify-between p-4 rounded-2xl shadow-xl border ${webAlert.type === 'temp' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
+                <div className="flex items-center gap-3 font-bold text-sm">
+                    <AlertTriangle className={`animate-pulse ${webAlert.type === 'temp' ? 'text-red-500' : 'text-orange-500'}`} />
+                    {webAlert.msg}
+                </div>
+                <button onClick={() => setWebAlert(null)} className="p-1 hover:bg-black/5 rounded-full transition-colors">
+                    <X size={18} />
+                </button>
+            </div>
+        </div>
+      )}
 
       {/* Header */}
       <header className="flex justify-between mb-6">
@@ -178,7 +183,6 @@ export default function Dashboard() {
           <p className="text-xl text-gray-500">
             ยินดีต้อนรับ, <span className="text-primary-dark font-bold">{session?.user?.name || 'ชาวสวน'}</span>!
           </p>
-          {/* ✅ โชว์เวลาแบบเต็มๆ ตรงนี้ */}
           <p className="text-xs text-gray-400">
             อัปเดตล่าสุด: <span className="font-bold text-primary-medium">{latest ? formatTime(latest.timestamp) : (loadingData ? 'กำลังโหลด...' : '-')}</span>
           </p>
@@ -207,7 +211,6 @@ export default function Dashboard() {
       {/* --- CONTENT: OVERVIEW --- */}
       {activeTab === 'overview' && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-
           <div className="bg-white rounded-[30px] p-6 shadow-md text-center relative overflow-hidden border border-secondary-light">
             <div className={`absolute top-0 left-0 w-full h-2 ${latest?.soil_moisture < 40 ? 'bg-red-500' : 'bg-primary-medium'}`}></div>
             <h2 className="text-gray-500 mb-4 font-bold">สถานะระบบโดยรวม</h2>
@@ -272,8 +275,6 @@ export default function Dashboard() {
       {/* --- CONTENT: HISTORY --- */}
       {activeTab === 'history' && (
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-10">
-
-          {/* ✅ เพิ่มปุ่ม ALL (ทั้งหมด) ให้กด */}
           <div className="flex justify-end gap-2 text-xs text-gray-400 font-bold bg-white p-2 rounded-full shadow-sm w-fit ml-auto">
             {['1H', '24H', '7D', '30D', 'ALL'].map(filter => (
               <button
@@ -340,7 +341,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* ---------------- กราฟที่ 2: ความชื้นอากาศ ---------------- */}
               <div className="bg-white p-5 rounded-[32px] shadow-lg border border-secondary-light mt-6">
                 <h3 className="text-sm font-bold text-gray-600 mb-4 flex items-center gap-2">
                   <CloudRain size={18} className="text-blue-500" /> ความชื้นอากาศ
@@ -358,7 +358,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* ---------------- กราฟที่ 3: ความชื้นดิน ---------------- */}
               <div className="bg-white p-5 rounded-[32px] shadow-lg border border-secondary-light mt-6">
                 <h3 className="text-sm font-bold text-gray-600 mb-4 flex items-center gap-2">
                   <Droplets size={18} className="text-green-500" /> ความชื้นดิน
@@ -375,12 +374,10 @@ export default function Dashboard() {
                   </ResponsiveContainer>
                 </div>
               </div>
-
             </>
           )}
         </div>
       )}
-
     </div>
   );
 }

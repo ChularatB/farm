@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Sprout, Loader2, UserPlus, Mail, Phone } from 'lucide-react';
+import { UserPlus, Mail, Phone, Loader2, AlertCircle } from 'lucide-react'; // เพิ่ม AlertCircle มาให้ดูสวยๆ
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '', password: '', confirmPassword: '' });
@@ -13,6 +13,7 @@ export default function RegisterPage() {
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+    setError(''); // พิมพ์ปุ๊บ ลบแจ้งเตือนปั๊บ จะได้ไม่งง
   };
 
   const handleSubmit = async (e) => {
@@ -21,7 +22,14 @@ export default function RegisterPage() {
     setLoading(true);
 
     if (formData.password !== formData.confirmPassword) {
-      setError('รหัสผ่านไม่ตรงกัน');
+      setError('รหัสผ่านและการยืนยันรหัสผ่านไม่ตรงกัน');
+      setLoading(false);
+      return;
+    }
+
+    // กันเหนียว เผื่อเบอร์โทรพิมพ์ไม่ครบ 10 ตัว
+    if (formData.phone.length !== 10) {
+      setError('กรุณากรอกเบอร์โทรศัพท์ให้ครบ 10 หลัก');
       setLoading(false);
       return;
     }
@@ -32,8 +40,8 @@ export default function RegisterPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
-          email: formData.email, // ส่ง email
-          phone: formData.phone, // ส่ง phone
+          email: formData.email,
+          phone: formData.phone,
           password: formData.password
         }),
       });
@@ -41,20 +49,21 @@ export default function RegisterPage() {
       const json = await res.json();
 
       if (!res.ok) {
-        setError(json.error || 'เกิดข้อผิดพลาด');
-        setLoading(false);
+        // 🛑 ถ้าระบบตอบกลับมาว่าซ้ำ มันจะเอาข้อความมาโชว์ตรงนี้!
+        setError(json.error || 'เกิดข้อผิดพลาดในการสมัคร');
       } else {
-        alert('สมัครสมาชิกสำเร็จ! รหัสฟาร์มของคุณคือ: ' + json.deviceId);
+        alert('🎉 สมัครสมาชิกสำเร็จ! รหัสฟาร์มของคุณคือ: ' + json.deviceId);
         router.push('/login');
       }
     } catch (err) {
-      setError('เชื่อมต่อระบบล้มเหลว');
+      setError('ไม่สามารถเชื่อมต่อกับเซิร์ฟเวอร์ได้ ลองใหม่อีกครั้งนะ');
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background-light flex justify-center items-start  p-5 font-mitr py-10">
+    <div className="min-h-screen bg-background-light flex justify-center items-start p-5 font-mitr py-10">
       <div className="bg-white p-8 rounded-[40px] shadow-xl w-full max-w-md border border-secondary-light">
         
         <div className="text-center mb-6">
@@ -70,7 +79,7 @@ export default function RegisterPage() {
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">ชื่อฟาร์ม / ชื่อผู้ใช้</label>
             <input name="name" type="text" required onChange={handleChange}
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50"
+              className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50 transition-colors"
               placeholder="เช่น สมชาย ฟาร์ม" />
           </div>
 
@@ -78,9 +87,9 @@ export default function RegisterPage() {
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">อีเมล (Email)</label>
             <div className="relative">
-                <Mail className="absolute left-3 top-3 text-gray-400" size={18}/>
+                <Mail className="absolute left-3 top-3.5 text-gray-400" size={18}/>
                 <input name="email" type="email" required onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50"
+                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50 transition-colors"
                 placeholder="example@email.com" />
             </div>
           </div>
@@ -89,9 +98,9 @@ export default function RegisterPage() {
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">เบอร์โทรศัพท์ (Phone)</label>
              <div className="relative">
-                <Phone className="absolute left-3 top-3 text-gray-400" size={18}/>
+                <Phone className="absolute left-3 top-3.5 text-gray-400" size={18}/>
                 <input name="phone" type="tel" required pattern="[0-9]{10}" onChange={handleChange}
-                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50"
+                className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50 transition-colors"
                 placeholder="08XXXXXXXX" />
             </div>
           </div>
@@ -100,25 +109,31 @@ export default function RegisterPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">รหัสผ่าน</label>
-                <input name="password" type="password" required onChange={handleChange}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50" placeholder="******" />
+                <input name="password" type="password" required minLength="6" onChange={handleChange}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50 transition-colors" placeholder="******" />
             </div>
             <div>
                 <label className="block text-xs font-bold text-gray-500 mb-1 ml-2">ยืนยันรหัส</label>
-                <input name="confirmPassword" type="password" required onChange={handleChange}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50" placeholder="******" />
+                <input name="confirmPassword" type="password" required minLength="6" onChange={handleChange}
+                className="w-full px-4 py-3 rounded-2xl border border-gray-200 focus:border-primary-medium outline-none bg-gray-50 transition-colors" placeholder="******" />
             </div>
           </div>
 
-          {error && <div className="bg-red-50 text-red-500 text-xs p-3 rounded-xl text-center font-bold">⚠️ {error}</div>}
+          {/* 🛑 แจ้งเตือน Error */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 text-xs p-3 rounded-2xl flex items-center gap-2 font-bold animate-in fade-in slide-in-from-top-2">
+              <AlertCircle size={16} />
+              <span>{error}</span>
+            </div>
+          )}
 
-          <button type="submit" disabled={loading} className="w-full bg-primary-medium hover:bg-primary-dark text-white font-bold py-3 rounded-3xl shadow-lg transition-all flex justify-center items-center gap-2 mt-4">
-            {loading ? <Loader2 className="animate-spin" /> : 'ลงทะเบียน'}
+          <button type="submit" disabled={loading} className="w-full bg-primary-medium hover:bg-primary-dark text-white font-bold py-3.5 rounded-3xl shadow-lg hover:shadow-xl transition-all flex justify-center items-center gap-2 mt-2 disabled:opacity-70 disabled:cursor-not-allowed">
+            {loading ? <Loader2 className="animate-spin" size={20} /> : 'ลงทะเบียนเข้าใช้งาน'}
           </button>
         </form>
         
         <div className="text-center mt-6">
-            <Link href="/login" className="text-sm text-gray-500 hover:text-primary-dark font-bold underline">
+            <Link href="/login" className="text-sm text-gray-500 hover:text-primary-dark font-bold underline transition-colors">
                 มีบัญชีอยู่แล้ว? เข้าสู่ระบบ
             </Link>
         </div>
