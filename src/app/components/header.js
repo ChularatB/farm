@@ -25,7 +25,7 @@ export default function Header() {
         if (currentData.temperature > 35) {
             newAlerts.push({ type: 'temp', msg: `ระวัง! อุณหภูมิร้อนจัด: ${parseFloat(currentData.temperature).toFixed(1)}°C`, time: currentData.timestamp });
         }
-        if (currentData.soil_moisture < 40) {
+        if (currentData.soil_moisture < 1800) {
             newAlerts.push({ type: 'soil', msg: `ดินแห้งเกินไป! ความชื้นเหลือ: ${parseInt(currentData.soil_moisture)}`, time: currentData.timestamp });
         }
 
