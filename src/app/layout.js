@@ -1,7 +1,6 @@
 import Navbar from "./components/navbar";
 import Header from "./components/header";
 import "./globals.css";
-import DashboardPage from "./page";
 import "../output.css";
 import { Providers } from "./providers";
 

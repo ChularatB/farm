@@ -19,8 +19,6 @@ export default function Dashboard() {
   const [summary, setSummary] = useState({ avgTemp: 0, avgHumid: 0, avgSoil: 0 });
   const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // 🛑 State สำหรับเก็บข้อความแจ้งเตือนหน้าเว็บ
-  const [webAlert, setWebAlert] = useState(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/login');
@@ -28,22 +26,13 @@ export default function Dashboard() {
 
   const fetchData = async () => {
     try {
-      const res = await fetch('/api/sensors?range=ALL'); 
+      const res = await fetch('/api/sensors?range=ALL');
       const json = await res.json();
 
       if (json.data && json.data.length > 0) {
         const reversedData = [...json.data].reverse();
         const currentData = reversedData[reversedData.length - 1];
         setLatest(currentData);
-
-        // 🚨 ระบบเช็คเงื่อนไขแจ้งเตือนบนเว็บ (อิงจากค่าล่าสุด)
-        if (currentData.temperature > 35) {
-            setWebAlert({ type: 'temp', msg: `🔥 ระวัง! อุณหภูมิร้อนจัด: ${currentData.temperature}°C` });
-        } else if (currentData.soil_moisture < 40) { // แกปรับตัวเลข 40 ให้ตรงกับเซนเซอร์แกได้นะ
-            setWebAlert({ type: 'soil', msg: `🏜️ ดินแห้งเกินไป! ความชื้นเหลือ: ${currentData.soil_moisture}` });
-        } else {
-            setWebAlert(null); // ถ้าปกติก็ซ่อนป้ายเตือน
-        }
       }
     } catch (error) {
       console.error("Error fetching data:", error);
@@ -140,9 +129,9 @@ export default function Dashboard() {
         }
       }
       const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "--/--/-- --:--"; 
-      return date.toLocaleDateString('th-TH', { 
-        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
+      if (isNaN(date.getTime())) return "--/--/-- --:--";
+      return date.toLocaleDateString('th-TH', {
+        day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
       });
     } catch (error) {
       return "--/--/-- --:--";
@@ -161,21 +150,6 @@ export default function Dashboard() {
 
   return (
     <div className="h-screen bg-background-light font-mitr pb-24 px-6 pt-8 overflow-y-auto relative">
-
-      {/* 🚨 Popup แจ้งเตือนลอยบนสุดของหน้าจอ 🚨 */}
-      {webAlert && (
-        <div className="fixed top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-md z-50 animate-in fade-in slide-in-from-top-10 duration-500">
-            <div className={`flex items-center justify-between p-4 rounded-2xl shadow-xl border ${webAlert.type === 'temp' ? 'bg-red-50 border-red-200 text-red-700' : 'bg-orange-50 border-orange-200 text-orange-700'}`}>
-                <div className="flex items-center gap-3 font-bold text-sm">
-                    <AlertTriangle className={`animate-pulse ${webAlert.type === 'temp' ? 'text-red-500' : 'text-orange-500'}`} />
-                    {webAlert.msg}
-                </div>
-                <button onClick={() => setWebAlert(null)} className="p-1 hover:bg-black/5 rounded-full transition-colors">
-                    <X size={18} />
-                </button>
-            </div>
-        </div>
-      )}
 
       {/* Header */}
       <header className="flex justify-between mb-6">
@@ -199,8 +173,8 @@ export default function Dashboard() {
             key={tab}
             onClick={() => setActiveTab(tab)}
             className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all duration-300 ${activeTab === tab
-                ? 'bg-primary-medium text-white shadow-md'
-                : 'text-gray-400 hover:text-primary-dark'
+              ? 'bg-primary-medium text-white shadow-md'
+              : 'text-gray-400 hover:text-primary-dark'
               }`}
           >
             {tab === 'overview' ? 'ภาพรวม' : 'ประวัติย้อนหลัง'}
