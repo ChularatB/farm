@@ -61,20 +61,41 @@ export default function Dashboard() {
         const groupedMap = new Map();
 
         json.data.reverse().forEach(item => {
-          const date = new Date(item.timestamp);
+          // 🛑 1. จัดการล้างคำสาปเวลา +7 ตรงนี้! 🛑
+          let dateString = item.timestamp;
+          if (typeof dateString === 'string') {
+            // ลบ Z หรือ +00:00 ที่ตามหลังมาออกให้หมด
+            dateString = dateString.replace(/Z/gi, '').replace(/\+00:00/gi, '');
+            // แปลงรูปแบบให้ Javascript เข้าใจแบบตรงไปตรงมา
+            dateString = dateString.replace(' ', 'T');
+          }
+
+          // สร้าง Date Object แบบ "ไม่สนใจ Timezone" (เพราะ Backend เราส่งเวลาไทยมาให้แล้ว)
+          const date = new Date(dateString);
+
           let timeLabel = '';
 
+          // 🛑 2. ปรับการแสดงผลเวลาให้ตรงตาม Filter
           if (activeFilter === '1H') {
-            timeLabel = date.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+            // ใช้ getHours(), getMinutes() ตรงๆ ไม่ผ่าน toLocaleTimeString เพื่อป้องกันมันบวกเวลาเพิ่มอีก
+            const hh = String(date.getHours()).padStart(2, '0');
+            const mm = String(date.getMinutes()).padStart(2, '0');
+            timeLabel = `${hh}:${mm}`;
           } else if (activeFilter === '24H') {
-            timeLabel = date.toLocaleTimeString('th-TH', { hour: '2-digit' }) + ':00';
+            const hh = String(date.getHours()).padStart(2, '0');
+            timeLabel = `${hh}:00`;
           } else if (activeFilter === '7D') {
             const days = ['อาทิตย์', 'จันทร์', 'อังคาร', 'พุธ', 'พฤหัสฯ', 'ศุกร์', 'เสาร์'];
             timeLabel = days[date.getDay()];
           } else if (activeFilter === '30D') {
-            timeLabel = date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short' });
+            const day = date.getDate();
+            const month = date.toLocaleString('th-TH', { month: 'short' });
+            timeLabel = `${day} ${month}`;
           } else {
-            timeLabel = date.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: '2-digit' });
+            const day = date.getDate();
+            const month = date.toLocaleString('th-TH', { month: 'short' });
+            const year = String(date.getFullYear() + 543).slice(-2); 
+            timeLabel = `${day} ${month} ${year}`;
           }
 
           if (!groupedMap.has(timeLabel)) {
