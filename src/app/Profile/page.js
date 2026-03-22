@@ -112,12 +112,12 @@ export default function Profile() {
          {/* ข้อมูลฟาร์ม (แก้ไขได้) */}
          <div className="flex justify-between items-center mb-2 px-2">
             <h3 className="text-sm font-bold text-gray-500">ข้อมูลฟาร์ม</h3>
-            <button
+            {/* <button
                onClick={() => isEditing ? handleSaveFarmInfo() : setIsEditing(true)}
                className="text-xs flex items-center gap-1 text-primary-dark font-bold bg-white px-3 py-1 rounded-full shadow-sm transition-colors hover:bg-gray-50"
             >
                {isEditing ? (saving ? 'กำลังบันทึก...' : <><Save size={14} /> บันทึก</>) : <><Edit3 size={14} /> แก้ไข</>}
-            </button>
+            </button> */}
          </div>
 
          <div className="grid grid-cols-2 gap-4 mb-6">
