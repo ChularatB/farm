@@ -1,4 +1,4 @@
-// src/app/components/Header.js (หรือ path ที่แกเก็บไฟล์นี้)
+// src/app/components/Header.js
 "use client";
 import { useState, useEffect } from 'react';
 import Link from "next/link";
@@ -10,16 +10,16 @@ export default function Header() {
   const [showNotif, setShowNotif] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // 🛑 State สำหรับเก็บแจ้งเตือนวิกฤตจากเซนเซอร์
+  // 🛑 ตัวแปรที่หายไป ชั้นเอากลับมาให้แล้วนะจ๊ะ! 🛑
+  const [notifications, setNotifications] = useState([]); 
   const [sensorAlerts, setSensorAlerts] = useState([]);
 
-  // 🚨 ฟังก์ชันดึงค่าเซนเซอร์ล่าสุดมาเช็คเตือน
   const checkSensorAlerts = async () => {
     try {
-      const res = await fetch('/api/sensors?range=1H'); // ดึงแค่ข้อมูลชั่วโมงล่าสุดพอ
+      const res = await fetch('/api/sensors?range=1H');
       const json = await res.json();
       if (json.data && json.data.length > 0) {
-        const currentData = json.data[0]; // ข้อมูลล่าสุดจะอยู่ index 0 (ถ้า query เรียง DESC มาแล้ว)
+        const currentData = json.data[0]; 
         let newAlerts = [];
 
         if (currentData.temperature > 35) {
@@ -31,9 +31,8 @@ export default function Header() {
 
         setSensorAlerts(newAlerts);
         
-        // อัปเดตจุดแดง ถ้ายิงแจ้งเตือนใหม่มา และยังไม่ได้เปิดกระดิ่งดู
         if (!showNotif && newAlerts.length > 0) {
-           setUnreadCount(newAlerts.length); // + จำนวนแจ้งเตือนจาก DB (ถ้ามี)
+           setUnreadCount(newAlerts.length); 
         }
       }
     } catch (error) {
@@ -42,22 +41,24 @@ export default function Header() {
   };
 
   useEffect(() => {
-    checkSensorAlerts(); // เช็คตอนโหลดครั้งแรก
+    checkSensorAlerts(); 
 
     const interval = setInterval(() => {
         checkSensorAlerts();
-    }, 10000); // ตั้งให้เช็คทุก 10 วิ (ให้ตรงกับ Dashboard)
+    }, 10000); 
     
     return () => clearInterval(interval);
-  }, [showNotif]); // ใส่ showNotif เป็น dependency เพื่อให้คำนวณ unreadCount ถูก
+  }, [showNotif]); 
 
   const handleBellClick = () => {
     if (!showNotif) {
-        setUnreadCount(0); // ลบจุดแดง
+        setUnreadCount(0); 
     }
     setShowNotif(!showNotif);
   };
 
+  // 🛑 ประกาศตัวแปรรวมการแจ้งเตือนตรงนี้จ้า! 🛑
+  const allAlerts = [...sensorAlerts, ...notifications];
 
   return (
     <div className="m-7 flex items-center justify-between relative z-50">
@@ -89,7 +90,6 @@ export default function Header() {
                   allAlerts.map((notif, index) => (
                     <div key={index} className={`p-4 border-b border-gray-50 flex items-start gap-3 transition-colors ${notif.type ? 'bg-orange-50/50 hover:bg-orange-50' : 'hover:bg-gray-50'}`}>
                       
-                      {/* ไอคอนตามประเภทการเตือน */}
                       <div className={`p-2 rounded-full mt-1 ${notif.type === 'temp' ? 'bg-red-100 text-red-500' : notif.type === 'soil' ? 'bg-orange-100 text-orange-500' : 'bg-gray-100 text-gray-400'}`}>
                         {notif.type ? <AlertTriangle size={16} /> : <GoBellFill size={16} />}
                       </div>
