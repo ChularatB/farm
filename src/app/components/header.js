@@ -1,6 +1,5 @@
-// src/app/components/Header.js
 "use client";
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react'; 
 import Link from "next/link";
 import { X, AlertTriangle } from "lucide-react";
 import { GoBellFill } from "react-icons/go";
@@ -10,9 +9,10 @@ export default function Header() {
   const [showNotif, setShowNotif] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // 🛑 ตัวแปรที่หายไป ชั้นเอากลับมาให้แล้วนะจ๊ะ! 🛑
   const [notifications, setNotifications] = useState([]); 
   const [sensorAlerts, setSensorAlerts] = useState([]);
+
+  const lastReadTimeRef = useRef(null);
 
   const checkSensorAlerts = async () => {
     try {
@@ -25,14 +25,22 @@ export default function Header() {
         if (currentData.temperature > 35) {
             newAlerts.push({ type: 'temp', msg: `ระวัง! อุณหภูมิร้อนจัด: ${parseFloat(currentData.temperature).toFixed(1)}°C`, time: currentData.timestamp });
         }
-        if (currentData.soil_moisture < 1800) {
-            newAlerts.push({ type: 'soil', msg: `ดินแห้งเกินไป! ความชื้นเหลือ: ${parseInt(currentData.soil_moisture)}`, time: currentData.timestamp });
+        if (currentData.soil_moisture > 2800) {
+            newAlerts.push({ type: 'soil', msg: `รดน้ำด่วน! ดินแห้งมาก (ค่า: ${parseInt(currentData.soil_moisture)})`, time: currentData.timestamp });
         }
 
         setSensorAlerts(newAlerts);
         
-        if (!showNotif && newAlerts.length > 0) {
-           setUnreadCount(newAlerts.length); 
+        if (newAlerts.length > 0) {
+            const latestAlertTime = new Date(currentData.timestamp).getTime();
+            
+            if (!lastReadTimeRef.current || latestAlertTime > lastReadTimeRef.current) {
+                if (!showNotif) {
+                    setUnreadCount(newAlerts.length);
+                }
+            }
+        } else {
+            setUnreadCount(0);
         }
       }
     } catch (error) {
@@ -53,11 +61,16 @@ export default function Header() {
   const handleBellClick = () => {
     if (!showNotif) {
         setUnreadCount(0); 
+        
+        if (sensorAlerts.length > 0) {
+            lastReadTimeRef.current = new Date(sensorAlerts[0].time).getTime();
+        } else {
+            lastReadTimeRef.current = Date.now();
+        }
     }
     setShowNotif(!showNotif);
   };
 
-  // 🛑 ประกาศตัวแปรรวมการแจ้งเตือนตรงนี้จ้า! 🛑
   const allAlerts = [...sensorAlerts, ...notifications];
 
   return (

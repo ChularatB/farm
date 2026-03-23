@@ -94,7 +94,7 @@ export default function Dashboard() {
           } else {
             const day = date.getDate();
             const month = date.toLocaleString('th-TH', { month: 'short' });
-            const year = String(date.getFullYear() + 543).slice(-2); 
+            const year = String(date.getFullYear() + 543).slice(-2);
             timeLabel = `${day} ${month} ${year}`;
           }
 
@@ -207,16 +207,16 @@ export default function Dashboard() {
       {activeTab === 'overview' && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="bg-white rounded-[30px] p-6 shadow-md text-center relative overflow-hidden border border-secondary-light">
-            <div className={`absolute top-0 left-0 w-full h-2 ${latest?.soil_moisture < 40 ? 'bg-red-500' : 'bg-primary-medium'}`}></div>
+            <div className={`absolute top-0 left-0 w-full h-2 ${latest?.soil_moisture > 2800 ? 'bg-red-500' : 'bg-primary-medium'}`}></div>
             <h2 className="text-gray-500 mb-4 font-bold">สถานะระบบโดยรวม</h2>
-            <div className={`text-5xl font-bold mb-2 ${latest?.soil_moisture < 40 ? 'text-red-500' : 'text-green-500'}`}>
-              {loadingData ? '...' : (latest?.soil_moisture < 40 ? 'Warning' : 'Normal')}
+            <div className={`text-5xl font-bold mb-2 ${latest?.soil_moisture > 2800 ? 'text-red-500' : 'text-green-500'}`}>
+              {loadingData ? '...' : (latest?.soil_moisture > 2800 ? 'Warning' : 'Normal')}
             </div>
             <p className="text-xs text-gray-400 px-4">
               {loadingData
                 ? 'กำลังเชื่อมต่อกับเซ็นเซอร์...'
-                : (latest?.soil_moisture < 40
-                  ? 'ความชื้นในดินต่ำกว่ากำหนด ระบบกำลังแจ้งเตือน'
+                : (latest?.soil_moisture > 2800
+                  ? 'ความชื้นในดินสูงกว่ากำหนด ระบบกำลังแจ้งเตือน'
                   : 'ระบบทำงานปกติ ค่าความชื้นและอุณหภูมิอยู่ในเกณฑ์ที่กำหนด')}
             </p>
           </div>
@@ -259,8 +259,12 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-              <span className={`text-xs px-2 py-1 rounded-lg font-bold ${latest?.soil_moisture < 40 ? 'bg-yellow-100 text-yellow-600' : 'bg-green-100 text-green-600'}`}>
-                {latest?.soil_moisture < 40 ? 'ดินแห้ง' : 'ชุ่มชื้น'}
+              <span className={`text-xs px-2 py-1 rounded-lg font-bold ${latest?.soil_moisture > 2800 ? 'bg-red-100 text-red-600' : // แห้งจัด
+                  latest?.soil_moisture < 1800 ? 'bg-blue-100 text-blue-600' :
+                    'bg-green-100 text-green-600'
+                }`}>
+                {latest?.soil_moisture > 2800 ? 'ดินแห้งด่วน' :
+                  latest?.soil_moisture < 1800 ? 'ดินแฉะ' : 'ชุ่มชื้น'}
               </span>
             </div>
           </div>
