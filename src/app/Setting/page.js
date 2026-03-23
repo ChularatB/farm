@@ -27,14 +27,14 @@ export default function SettingsPage() {
   const [useFertilizer, setUseFertilizer] = useState(false);
   const [farmSize, setFarmSize] = useState('');
   const [totalDevices, setTotalDevices] = useState('');
-  
+
   // 🛑 เพิ่ม State สำหรับเก็บ LINE User ID
   const [lineUserId, setLineUserId] = useState('');
 
   // State ตั้งเวลา
-  const [lightStart, setLightStart] = useState('18:00'); 
-  const [lightDuration, setLightDuration] = useState('4'); 
-  const [fertilizerDays, setFertilizerDays] = useState('30'); 
+  const [lightStart, setLightStart] = useState('18:00');
+  const [lightDuration, setLightDuration] = useState('4');
+  const [fertilizerDays, setFertilizerDays] = useState('30');
 
   const [saving, setSaving] = useState(false);
 
@@ -53,12 +53,12 @@ export default function SettingsPage() {
             setUseFertilizer(data.use_fertilizer ?? false);
             setFarmSize(data.farm_size || '');
             setTotalDevices(data.total_devices || '');
-            
+
             // ดึงค่าเวลา และ LINE ID (ถ้ามี)
             setLightStart(data.light_start_time || '18:00');
             setLightDuration(data.light_duration?.toString() || '4');
             setFertilizerDays(data.fertilizer_interval?.toString() || '30');
-            setLineUserId(data.line_user_id || ''); // 🛑 รับค่า LINE ID จาก API
+            setLineUserId(data.line_user_id || ''); 
           }
         })
         .catch(err => console.error(err));
@@ -80,7 +80,7 @@ export default function SettingsPage() {
           light_start_time: lightStart,
           light_duration: parseInt(lightDuration),
           fertilizer_interval: parseInt(fertilizerDays),
-          line_user_id: lineUserId // 🛑 ส่งค่า LINE ID ไปเซฟด้วย!
+          line_user_id: lineUserId 
         })
       });
       if (res.ok) alert("บันทึกการตั้งค่าเรียบร้อย!");
@@ -155,7 +155,7 @@ export default function SettingsPage() {
             <span className="text-sm text-gray-500">ชิ้น</span>
           </div>
         </div>
-        
+
         {/* 🛑 เพิ่มกล่องสำหรับกรอก LINE User ID ตรงนี้เลย! */}
         <div>
           <h2 className="text-sm text-gray-500 mb-2 ml-2 flex items-center gap-1">
@@ -167,14 +167,17 @@ export default function SettingsPage() {
               <h3 className="font-bold text-green-800">LINE User ID</h3>
             </div>
             <p className="text-xs text-green-600/80 mb-3 ml-1">กรอก User ID เพื่อรับแจ้งเตือนเมื่อดินแห้ง, อากาศร้อน หรือมีรูปล่าสุดจากฟาร์ม</p>
-            <input 
-              type="text" 
-              placeholder="เช่น Ubfc450..." 
-              value={lineUserId} 
-              onChange={(e) => setLineUserId(e.target.value)} 
-              className="w-full bg-white rounded-xl p-3 font-medium text-gray-700 outline-none border border-green-200 focus:border-green-500 shadow-inner" 
+            <input
+              type="text"
+              placeholder="เช่น Ubfc450..."
+              value={lineUserId}
+              onChange={(e) => setLineUserId(e.target.value)}
+              className="w-full bg-white rounded-xl p-3 font-medium text-gray-700 outline-none border border-green-200 focus:border-green-500 shadow-inner"
             />
           </div>
+          <p className="text-[12px] text-gray-400 mt-1 ml-2">
+            *พิมพ์ "ขอรหัส" ในแชทบอท LINE FarmBrain แล้วนำรหัสมากรอกที่นี่
+          </p>
         </div>
 
       </div>
