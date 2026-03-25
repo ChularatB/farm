@@ -206,20 +206,23 @@ export default function Dashboard() {
       {/* --- CONTENT: OVERVIEW --- */}
       {activeTab === 'overview' && (
         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
-          <div className="bg-white rounded-[30px] p-6 shadow-md text-center relative overflow-hidden border border-secondary-light">
-            <div className={`absolute top-0 left-0 w-full h-2 ${latest?.soil_moisture > 2800 ? 'bg-red-500' : 'bg-primary-medium'}`}></div>
-            <h2 className="text-gray-500 mb-4 font-bold">สถานะระบบโดยรวม</h2>
-            <div className={`text-5xl font-bold mb-2 ${latest?.soil_moisture > 2800 ? 'text-red-500' : 'text-green-500'}`}>
-              {loadingData ? '...' : (latest?.soil_moisture > 2800 ? 'Warning' : 'Normal')}
+          {/* 🛑 เช็คก่อนว่ามี device_id หรือเปล่า ถ้ามีถึงจะ render กล่องนี้ออกมา */}
+          {session?.user?.device_id && (
+            <div className="bg-white rounded-[30px] p-6 shadow-md text-center relative overflow-hidden border border-secondary-light">
+              <div className={`absolute top-0 left-0 w-full h-2 ${latest?.soil_moisture > 2800 ? 'bg-red-500' : 'bg-primary-medium'}`}></div>
+              <h2 className="text-gray-500 mb-4 font-bold">สถานะระบบโดยรวม</h2>
+              <div className={`text-5xl font-bold mb-2 ${latest?.soil_moisture > 2800 ? 'text-red-500' : 'text-green-500'}`}>
+                {loadingData ? '...' : (latest?.soil_moisture > 2800 ? 'Warning' : 'Normal')}
+              </div>
+              <p className="text-xs text-gray-400 px-4">
+                {loadingData
+                  ? 'กำลังเชื่อมต่อกับเซ็นเซอร์...'
+                  : (latest?.soil_moisture > 2800
+                    ? 'ความชื้นในดินต่ำกว่ากำหนด ระบบกำลังแจ้งเตือน'
+                    : 'ระบบทำงานปกติ ค่าความชื้นและอุณหภูมิอยู่ในเกณฑ์ที่กำหนด')}
+              </p>
             </div>
-            <p className="text-xs text-gray-400 px-4">
-              {loadingData
-                ? 'กำลังเชื่อมต่อกับเซ็นเซอร์...'
-                : (latest?.soil_moisture > 2800
-                  ? 'ความชื้นในดินต่ำกว่ากำหนด ระบบกำลังแจ้งเตือน'
-                  : 'ระบบทำงานปกติ ค่าความชื้นและอุณหภูมิอยู่ในเกณฑ์ที่กำหนด')}
-            </p>
-          </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4">
             <div className="bg-white rounded-3xl p-5 flex items-center justify-between shadow-sm border border-secondary-light">
@@ -260,8 +263,8 @@ export default function Dashboard() {
                 </div>
               </div>
               <span className={`text-xs px-2 py-1 rounded-lg font-bold ${latest?.soil_moisture > 2800 ? 'bg-red-100 text-red-600' : // แห้งจัด
-                  latest?.soil_moisture < 1800 ? 'bg-blue-100 text-blue-600' :
-                    'bg-green-100 text-green-600'
+                latest?.soil_moisture < 1800 ? 'bg-blue-100 text-blue-600' :
+                  'bg-green-100 text-green-600'
                 }`}>
                 {latest?.soil_moisture > 2800 ? 'ดินแห้งด่วน' :
                   latest?.soil_moisture < 1800 ? 'ดินแฉะ' : 'ชุ่มชื้น'}

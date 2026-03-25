@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Droplets, Settings, Loader2, Lightbulb, Sprout, Image as ImageIcon, Camera } from 'lucide-react'; 
+import { Droplets, Settings, Loader2, Lightbulb, Sprout, Image as ImageIcon, Camera } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { clsx } from 'clsx';
@@ -57,9 +57,17 @@ export default function ControlPage() {
   }, [session]);
 
   // โหลดรูปล่าสุด
+  // 🛑 แก้ฟังก์ชันดึงรูป
   const fetchLatestImage = async () => {
+    // ถ้าผู้ใช้ยังไม่มี camera_id ไม่ต้องทำอะไรเลย ให้โชว์ว่าไม่มีรูป
+    if (!session?.user?.camera_id) {
+      setFarmImage(null);
+      setImgLoading(false);
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/farm-image?t=${new Date().getTime()}`, { cache: 'no-store' });
+      const res = await fetch(`/api/farm-image?t=${new Date().getTime()}&camera_id=${session.user.camera_id}`, { cache: 'no-store' });
       const json = await res.json();
       if (json.imageUrl) setFarmImage(json.imageUrl);
       else setFarmImage(null);
@@ -84,7 +92,7 @@ export default function ControlPage() {
       if (json.data && json.data.length > 0) {
         // สมมติฐาน: Relay เป็น Active Low (0 = เปิด, 1 = ปิด)
         setIsIrrigationOn(json.data[0].pump_status === 0);
-        
+
         // 🛑 เพิ่มการดึงสถานะไฟและปุ๋ย (ถ้า Backend แกส่งกลับมาด้วยนะ)
         if (json.data[0].light_status !== undefined) setIsLightOn(json.data[0].light_status === 0);
         if (json.data[0].fertilizer_status !== undefined) setIsFertilizerOn(json.data[0].fertilizer_status === 0);
@@ -108,41 +116,41 @@ export default function ControlPage() {
     const newMode = !isAuto;
     setIsAuto(newMode);
     localStorage.setItem('farm_control_mode', newMode ? 'auto' : 'manual');
-    
+
     // 🛡️ [Safety Cut-off] ถ้าเปลี่ยนเป็น Manual ให้หน้าจอเด้งกลับเป็นสถานะ "ปิด" ให้หมดทันที!
     if (!newMode) {
       setIsIrrigationOn(false);
       setIsLightOn(false);
       setIsFertilizerOn(false);
     }
-    
+
     try {
       await fetch('/api/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           device_id: session?.user?.device_id || '900C1AB865E4',
-          operation_mode: newMode ? 1 : 0 
+          operation_mode: newMode ? 1 : 0
         }),
       });
-    } catch(err) { console.error("Error updating mode:", err); }
+    } catch (err) { console.error("Error updating mode:", err); }
   };
 
   // 💧 สั่งน้ำ
   const toggleIrrigation = async () => {
     if (isAuto) return;
     const newState = !isIrrigationOn;
-    const commandToSend = newState ? 0 : 1; 
+    const commandToSend = newState ? 0 : 1;
     setIsIrrigationOn(newState);
-    
+
     try {
       const res = await fetch('/api/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           device_id: session?.user?.device_id || '900C1AB865E4',
-          operation_mode: 0, 
-          pump_command: commandToSend 
+          operation_mode: 0,
+          pump_command: commandToSend
         }),
       });
       if (!res.ok) { setIsIrrigationOn(!newState); alert('สั่งงานน้ำไม่สำเร็จ'); }
@@ -155,15 +163,15 @@ export default function ControlPage() {
     const newState = !isLightOn;
     const commandToSend = newState ? 0 : 1; // 0 = เปิด, 1 = ปิด (Active Low)
     setIsLightOn(newState);
-    
+
     try {
       const res = await fetch('/api/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           device_id: session?.user?.device_id || '900C1AB865E4',
-          operation_mode: 0, 
-          light_command: commandToSend 
+          operation_mode: 0,
+          light_command: commandToSend
         }),
       });
       if (!res.ok) { setIsLightOn(!newState); alert('สั่งงานไฟไม่สำเร็จ'); }
@@ -176,15 +184,15 @@ export default function ControlPage() {
     const newState = !isFertilizerOn;
     const commandToSend = newState ? 0 : 1; // 0 = เปิด, 1 = ปิด (Active Low)
     setIsFertilizerOn(newState);
-    
+
     try {
       const res = await fetch('/api/control', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
+        body: JSON.stringify({
           device_id: session?.user?.device_id || '900C1AB865E4',
-          operation_mode: 0, 
-          fertilizer_command: commandToSend 
+          operation_mode: 0,
+          fertilizer_command: commandToSend
         }),
       });
       if (!res.ok) { setIsFertilizerOn(!newState); alert('สั่งงานปุ๋ยไม่สำเร็จ'); }
@@ -195,7 +203,7 @@ export default function ControlPage() {
   const handleCapture = async () => {
     setIsCapturing(true);
     try {
-      const res = await fetch('/api/camera/snap', { 
+      const res = await fetch('/api/camera/snap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ camera_id: session?.user?.camera_id || "CAM_ECBD8ED6CDC0" })
@@ -210,7 +218,7 @@ export default function ControlPage() {
             clearInterval(checkInterval);
             setIsCapturing(false);
           }
-        }, 5000); 
+        }, 5000);
       } else {
         alert('ส่งคำสั่งถ่ายภาพล้มเหลว');
         setIsCapturing(false);
@@ -248,9 +256,16 @@ export default function ControlPage() {
             <div className="absolute top-5 left-5 bg-black/50 backdrop-blur-sm text-white text-[10px] px-3 py-1 rounded-full flex items-center gap-2">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse" /> LATEST UPDATE
             </div>
-
+            
             <div className="absolute top-4 right-4">
-              <button onClick={handleCapture} disabled={isCapturing} className={clsx("bg-white/90 backdrop-blur-sm p-3 rounded-full text-primary-dark shadow-lg transition-all active:scale-95", isCapturing ? "opacity-70 cursor-wait" : "hover:bg-primary-medium hover:text-white")}>
+              <button
+                // 🛑 ถ้ากำลังโหลด หรือ 'ไม่มี camera_id' ให้กดไม่ได้
+                disabled={isCapturing || !session?.user?.camera_id}
+                onClick={handleCapture}
+                className={clsx(
+                  "bg-white/90 backdrop-blur-sm p-3 rounded-full text-primary-dark shadow-lg transition-all active:scale-95",
+                  (isCapturing || !session?.user?.camera_id) ? "opacity-50 cursor-not-allowed" : "hover:bg-primary-medium hover:text-white"
+                )}>
                 {isCapturing ? <Loader2 size={20} className="animate-spin text-primary-medium" /> : <Camera size={20} />}
               </button>
             </div>

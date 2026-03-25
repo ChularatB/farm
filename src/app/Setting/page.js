@@ -58,7 +58,7 @@ export default function SettingsPage() {
             setLightStart(data.light_start_time || '18:00');
             setLightDuration(data.light_duration?.toString() || '4');
             setFertilizerDays(data.fertilizer_interval?.toString() || '30');
-            setLineUserId(data.line_user_id || ''); 
+            setLineUserId(data.line_user_id || '');
           }
         })
         .catch(err => console.error(err));
@@ -80,7 +80,7 @@ export default function SettingsPage() {
           light_start_time: lightStart,
           light_duration: parseInt(lightDuration),
           fertilizer_interval: parseInt(fertilizerDays),
-          line_user_id: lineUserId 
+          line_user_id: lineUserId
         })
       });
       if (res.ok) alert("บันทึกการตั้งค่าเรียบร้อย!");
@@ -137,54 +137,47 @@ export default function SettingsPage() {
           </div>
         )}
       </div>
-
       <div className="mb-6 space-y-4">
+        {/* กล่องข้อมูลพื้นที่ */}
         <div>
           <h2 className="text-sm text-gray-500 mb-2 ml-2">ข้อมูลพื้นที่</h2>
           <div className="bg-white rounded-3xl p-5 shadow-lg flex items-center gap-3 border border-gray-100">
             <MapPin size={20} className="text-gray-500" />
-            <input type="text" placeholder="ขนาดพื้นที่" value={farmSize} onChange={(e) => setFarmSize(e.target.value)} className="flex-1 border-b p-1 outline-none font-medium" />
+            <input
+              type="text"
+              inputMode="float" // 🛑 เปลี่ยนเป็น float เพื่อให้คีย์บอร์ดมือถือเด้งแป้นตัวเลขพร้อมจุดทศนิยมขึ้นมา
+              placeholder="ขนาดพื้นที่"
+              value={farmSize}
+              // 🛑 ดักจับให้รับเฉพาะตัวเลข
+              onChange={(e) => setFarmSize(e.target.value.replace(/[^0-9.]/g, ''))}
+              className="flex-1 border-b p-1 outline-none font-medium"
+            />
             <span className="text-sm text-gray-500">ตร.ม.</span>
           </div>
         </div>
+
+        {/* กล่องอุปกรณ์ในพื้นที่ */}
         <div>
           <h2 className="text-sm text-gray-500 mb-2 ml-2">อุปกรณ์ในพื้นที่</h2>
           <div className="bg-white rounded-3xl p-5 shadow-lg flex items-center gap-3 border border-gray-100">
             <Cpu size={20} className="text-gray-500" />
-            <input type="text" placeholder="จำนวนอุปกรณ์ (ชิ้น)" value={totalDevices} onChange={(e) => setTotalDevices(e.target.value)} className="flex-1 border-b p-1 outline-none font-medium" />
+            <input
+              type="text"
+              inputMode="numeric"
+              placeholder="จำนวนอุปกรณ์ (ชิ้น)"
+              value={totalDevices}
+              // 🛑 ดักจับให้รับเฉพาะตัวเลข
+              onChange={(e) => setTotalDevices(e.target.value.replace(/[^0-9]/g, ''))}
+              className="flex-1 border-b p-1 outline-none font-medium"
+            />
             <span className="text-sm text-gray-500">ชิ้น</span>
           </div>
         </div>
-
-        {/* 🛑 เพิ่มกล่องสำหรับกรอก LINE User ID ตรงนี้เลย! */}
-        <div>
-          <h2 className="text-sm text-gray-500 mb-2 ml-2 flex items-center gap-1">
-            รับการแจ้งเตือนผ่าน LINE
-          </h2>
-          <div className="bg-green-50 border border-green-200 rounded-3xl p-5 shadow-sm">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="bg-green-100 p-2 rounded-full text-green-600"><MessageCircle size={18} /></div>
-              <h3 className="font-bold text-green-800">LINE User ID</h3>
-            </div>
-            <p className="text-xs text-green-600/80 mb-3 ml-1">กรอก User ID เพื่อรับแจ้งเตือนเมื่อดินแห้ง, อากาศร้อน หรือมีรูปล่าสุดจากฟาร์ม</p>
-            <input
-              type="text"
-              placeholder="เช่น Ubfc450..."
-              value={lineUserId}
-              onChange={(e) => setLineUserId(e.target.value)}
-              className="w-full bg-white rounded-xl p-3 font-medium text-gray-700 outline-none border border-green-200 focus:border-green-500 shadow-inner"
-            />
-          </div>
-          <p className="text-[12px] text-gray-400 mt-1 ml-2">
-            *พิมพ์ "ขอรหัส" ในแชทบอท LINE FarmBrain แล้วนำรหัสมากรอกที่นี่
-          </p>
         </div>
 
+        <button onClick={handleSave} disabled={saving} className="w-full py-4 bg-primary-dark text-white font-bold rounded-3xl shadow-lg mt-4 flex justify-center items-center gap-2 hover:bg-opacity-90 transition-all">
+          {saving ? <Loader2 className="animate-spin" /> : <><Save size={20} /> บันทึกการตั้งค่า</>}
+        </button>
       </div>
-
-      <button onClick={handleSave} disabled={saving} className="w-full py-4 bg-primary-dark text-white font-bold rounded-3xl shadow-lg mt-4 flex justify-center items-center gap-2 hover:bg-opacity-90 transition-all">
-        {saving ? <Loader2 className="animate-spin" /> : <><Save size={20} /> บันทึกการตั้งค่า</>}
-      </button>
-    </div>
-  );
+      );
 }

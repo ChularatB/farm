@@ -13,27 +13,25 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleSubmit = async (e) => {
+const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
 
     try {
-      // เรียกฟังก์ชัน signIn ของ NextAuth
       const result = await signIn('credentials', {
         username: username,
         password: password,
-        redirect: false, // เราจะคุมการ Redirect เอง
+        redirect: false, 
       });
 
       if (result.error) {
-        // ถ้า Login ไม่ผ่าน
-        setError('ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง');
+        // 🛑 ดึงข้อความแจ้งเตือนเป๊ะๆ จาก Backend มาโชว์เลย
+        setError(result.error);
         setLoading(false);
       } else {
-        // ถ้าผ่าน ให้ไปหน้า Dashboard
-        router.push('/');
-        router.refresh(); // รีเฟรชเพื่อให้ Navbar อัปเดตสถานะ
+        // 🛑 ใช้ window.location.href จะทำให้เบราว์เซอร์พาไปหน้าแรกพร้อมโหลดข้อมูลใหม่ให้แบบสมบูรณ์ 100% (ไม่ต้องคอยกด F5 เองแล้วจ้า)
+        window.location.href = '/';
       }
     } catch (err) {
       setError('เกิดข้อผิดพลาดในการเชื่อมต่อ');
@@ -100,14 +98,14 @@ export default function LoginPage() {
             {loading ? <Loader2 className="animate-spin" /> : 'เข้าสู่ระบบ'}
           </button>
         </form>
-        
+
         <div className="mt-8 text-center space-y-2">
-           <p className="text-sm text-gray-500">
-              ยังไม่มีบัญชีใช่ไหม?{' '}
-              <Link href="/register" className="text-primary-dark font-bold hover:underline">
-                 สมัครสมาชิกที่นี่
-              </Link>
-           </p>
+          <p className="text-sm text-gray-500">
+            ยังไม่มีบัญชีใช่ไหม?{' '}
+            <Link href="/register" className="text-primary-dark font-bold hover:underline">
+              สมัครสมาชิกที่นี่
+            </Link>
+          </p>
         </div>
       </div>
     </div>
