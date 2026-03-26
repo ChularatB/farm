@@ -82,7 +82,7 @@ export default function ControlPage() {
     fetchLatestImage();
     const interval = setInterval(fetchLatestImage, 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [session]);
 
   // ดึงสถานะเซนเซอร์ (ว่าปั๊ม/ไฟ/ปุ๋ย เปิดหรือปิดอยู่)
   const fetchStatus = async () => {

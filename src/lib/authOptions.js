@@ -19,7 +19,7 @@ export const authOptions = {
         try {
           // 🛑 1. แก้ไขคำสั่ง SQL ให้ค้นหาได้ทั้งอีเมล หรือ เบอร์โทรศัพท์
           const query = `
-            SELECT user_id, email, phone, name, password, device_id, line_user_id 
+            SELECT user_id, email, phone, name, password, device_id, line_user_id, camera_id 
             FROM \`smart-farm-c9d48.smartfarm.users\` 
             WHERE email = @username OR phone = @username
             LIMIT 1
@@ -48,6 +48,7 @@ export const authOptions = {
             name: user.name,
             phone: user.phone,
             device_id: user.device_id,
+            camera_id: user.camera_id
           };
 
         } catch (error) {
@@ -68,6 +69,7 @@ export const authOptions = {
         token.email = user.email;
         token.device_id = user.device_id;
         token.line_user_id = user.line_user_id;
+        token.camera_id = user.camera_id;
       }
 
       // 🛑 ตรงนี้สำคัญมาก! เมื่อหน้าเว็บสั่ง update(formData) มันจะทำงานส่วนนี้
@@ -76,6 +78,8 @@ export const authOptions = {
         token.phone = session.phone;
         token.email = session.email;
         token.line_user_id = session.line_user_id;
+        token.camera_id = session.camera_id;
+
       }
       return token;
     },
@@ -87,7 +91,8 @@ export const authOptions = {
         session.user.phone = token.phone;
         session.user.email = token.email;
         session.user.device_id = token.device_id;
-        session.user.line_user_id = token.line_user_id; // โยนให้หน้า Profile ใช้งาน
+        session.user.line_user_id = token.line_user_id;
+        session.user.camera_id = token.camera_id;
       }
       return session;
     }
