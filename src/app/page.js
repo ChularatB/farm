@@ -48,9 +48,9 @@ export default function Dashboard() {
       const json = await res.json();
 
       if (json.data && json.data.length > 0) {
-        const avgT = json.data.reduce((acc, curr) => acc + (curr.temperature || 0), 0) / json.data.length;
-        const avgH = json.data.reduce((acc, curr) => acc + (curr.humidity || 0), 0) / json.data.length;
-        const avgS = json.data.reduce((acc, curr) => acc + (curr.soil_moisture || 0), 0) / json.data.length;
+        const avgT = json.data.reduce((acc, curr) => acc + (Number(curr.temperature) || 0), 0) / json.data.length;
+        const avgH = json.data.reduce((acc, curr) => acc + (Number(curr.humidity) || 0), 0) / json.data.length;
+        const avgS = json.data.reduce((acc, curr) => acc + (Number(curr.soil_moisture) || 0), 0) / json.data.length;
 
         setSummary({
           avgTemp: avgT.toFixed(1),
@@ -102,10 +102,11 @@ export default function Dashboard() {
             groupedMap.set(timeLabel, { name: timeLabel, tempSum: 0, humidSum: 0, soilSum: 0, count: 0 });
           }
           const group = groupedMap.get(timeLabel);
-          group.tempSum += item.temperature || 0;
-          group.humidSum += item.humidity || 0;
-          group.soilSum += item.soil_moisture || 0;
+          group.tempSum += Number(item.temperature) || 0; 
+          group.humidSum += Number(item.humidity) || 0;  
+          group.soilSum += Number(item.soil_moisture) || 0;
           group.count += 1;
+          
         });
 
         const formatted = Array.from(groupedMap.values()).map(group => ({
